@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f1e1d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Crew">
+<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<title>Claude Crew</title>
+<style>
+  :root {
+    --bg: #faf9f5; --panel: #ffffff; --panel-2: #f0eee6; --text: #1f1e1d; --muted: #6b6a65;
+    --border: #e3e0d6; --accent: #c96442; --accent-text: #fff; --you: #c96442; --you-text: #fff;
+    --ok: #4a8a5c; --warn: #b7822b; --err: #b3412f; --code: #f3f1ea;
+    --add-bg: #e6f4ea; --add-fg: #1e6b34; --del-bg: #fbe9e7; --del-fg: #a3281b; --hunk: #3a6ea5;
+    --scroll-thumb: #cfcbbf; --scroll-thumb-hover: #b3ae9f;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1f1e1d; --panel: #262624; --panel-2: #30302d; --text: #ecebe6; --muted: #9c9a92;
+      --border: #3a3936; --accent: #d97757; --you: #9c4a2f; --you-text: #fff;
+      --ok: #6fb581; --warn: #d9a54a; --err: #e0705c; --code: #1a1918;
+      --add-bg: #17301f; --add-fg: #8fd6a3; --del-bg: #3a1c18; --del-fg: #f2a497; --hunk: #8ab4e8;
+      --scroll-thumb: #45433f; --scroll-thumb-hover: #5c5a55;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1f1e1d; --panel: #262624; --panel-2: #30302d; --text: #ecebe6; --muted: #9c9a92;
+    --border: #3a3936; --accent: #d97757; --you: #9c4a2f; --you-text: #fff;
+    --ok: #6fb581; --warn: #d9a54a; --err: #e0705c; --code: #1a1918;
+    --add-bg: #17301f; --add-fg: #8fd6a3; --del-bg: #3a1c18; --del-fg: #f2a497; --hunk: #8ab4e8;
+    --scroll-thumb: #45433f; --scroll-thumb-hover: #5c5a55;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  /* Scrollbars: slim, theme-coloured thumb on a transparent track so they don't pull focus. */
+  * { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background-color: var(--scroll-thumb-hover); }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; height: 100dvh;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  header {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; white-space: nowrap; }
+  #conn { width: 8px; height: 8px; border-radius: 50%; background: var(--err); flex: none; }
+  #conn.on { background: var(--ok); }
+  header .spacer { flex: 1; }
+  .hbtn {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 4px 10px; font-size: 13px; color: var(--muted); white-space: nowrap;
+  }
+  .hbtn.on { color: var(--text); border-color: var(--accent); }
+
+  /* usage meter chip */
+  #usageBtn { display: flex; align-items: center; gap: 10px; padding: 4px 10px; }
+  .meter { display: grid; gap: 2px; min-width: 64px; text-align: left; }
+  .meter .lbl { font-size: 10.5px; line-height: 1; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+  .bar { height: 5px; border-radius: 3px; background: var(--panel-2); overflow: hidden; border: 1px solid var(--border); }
+  .bar > i { display: block; height: 100%; background: var(--ok); width: 0; transition: width .4s; }
+  .bar.warn > i { background: var(--warn); }
+  .bar.hot > i { background: var(--err); }
+  .bar.big { height: 12px; border-radius: 6px; }
+
+  #agents {
+    display: flex; gap: 8px; padding: 10px 16px; overflow-x: auto;
+    border-bottom: 1px solid var(--border); background: var(--panel); scrollbar-width: thin;
+  }
+  .agent {
+    position: relative;
+    flex: 0 0 auto; min-width: 150px; max-width: 230px; display: grid;
+    grid-template-columns: auto 1fr auto; gap: 2px 8px; align-items: center;
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-2);
+  }
+  .agent .emo { font-size: 20px; grid-row: span 2; cursor: pointer; display: grid; }
+  .spav { width: 34px; height: 34px; display: block; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.45)); }
+  .msg .av .spav { width: 34px; height: 34px; }
+  .spav.mini { width: 16px; height: 16px; display: inline-block; vertical-align: -3px; filter: none; }
+  .agent .nm { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .agent .act { grid-column: 2 / 4; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agent .mdl { font-size: 10.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 0 4px; font-weight: 500; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .5; flex: none; }
+  .agent.working .dot { background: var(--accent); opacity: 1; animation: pulse 1.2s infinite; }
+  .agent.queued .dot, .agent.held .dot { background: var(--warn); opacity: 1; }
+  .agent.missing { border-color: var(--err); }
+  .agent.needs { border-color: var(--err); box-shadow: 0 0 0 1px var(--err) inset; }
+  .agent .badge {
+    position: absolute; top: -6px; right: -6px; background: var(--err); color: #fff; font-size: 11px; font-weight: 700;
+    border-radius: 9px; padding: 0 6px; line-height: 18px; display: none;
+  }
+  .agent.needs .badge { display: block; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .agent .tools { display: flex; gap: 2px; }
+  .agent .tools button {
+    background: none; border: 0; padding: 2px 5px; border-radius: 6px; color: var(--muted); font-size: 13px;
+  }
+  .agent .tools button:hover { background: var(--border); color: var(--text); }
+
+  main { flex: 1; overflow-y: auto; padding: 16px; }
+  #log { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .empty { color: var(--muted); text-align: center; margin-top: 15vh; }
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg .av {
+    flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+    background: none; border: 0; font-size: 17px;
+  }
+  .msg .body { min-width: 0; flex: 1; }
+  .msg .meta { font-size: 12px; color: var(--muted); margin-bottom: 2px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .msg .meta b { color: var(--text); font-weight: 600; }
+  .msg .bubble {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 4px 14px 14px 14px;
+    padding: 9px 13px; overflow-wrap: anywhere;
+  }
+  .msg.you { flex-direction: row-reverse; }
+  .msg.you .body { display: flex; flex-direction: column; align-items: flex-end; }
+  .msg.you .bubble { background: var(--you); color: var(--you-text); border-color: transparent; border-radius: 14px 4px 14px 14px; max-width: 85%; }
+  .msg.you .bubble code { background: rgba(0,0,0,.2); }
+  .msg.draft .bubble { border-style: dashed; color: var(--muted); }
+  .msg.draft .bubble p:last-child::after { content: '▍'; animation: pulse 1s infinite; margin-left: 1px; }
+  .tag { font-size: 11px; padding: 0 6px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); }
+  .tag.needs { background: var(--err); border-color: var(--err); color: #fff; }
+  .bubble p { margin: 0 0 .6em; white-space: pre-wrap; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble pre { background: var(--code); padding: 10px; border-radius: 8px; overflow-x: auto; margin: .4em 0; font-size: 13px; }
+  .bubble code { font-family: ui-monospace, Consolas, monospace; font-size: .92em; background: var(--code); padding: 1px 4px; border-radius: 4px; }
+  .bubble pre code { background: none; padding: 0; }
+  .bubble a { color: var(--accent); }
+  .msg.you .bubble a { color: inherit; }
+  .note { text-align: center; font-size: 13px; color: var(--muted); }
+  .note.err, .msg.err .bubble { color: var(--err); }
+  .msg.err .bubble { border-color: var(--err); white-space: pre-wrap; }
+  .activity { font-size: 12px; color: var(--muted); padding-left: 42px; font-family: ui-monospace, Consolas, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body:not(.show-activity) .activity { display: none; }
+
+  /* extras under a message: attachments, approvals, changed files */
+  .extras { display: grid; gap: 6px; margin-top: 6px; }
+  .msg.you .extras { justify-items: end; }
+  .card { border: 1px solid var(--border); border-radius: 10px; background: var(--panel); padding: 8px 10px; font-size: 13px; }
+  .card.alert { border-color: var(--err); }
+  .card h4 { margin: 0 0 4px; font-size: 12.5px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+  .card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  .card li { display: flex; gap: 6px; align-items: baseline; min-width: 0; }
+  .card li .p { font-family: ui-monospace, Consolas, monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  .st { font-size: 10.5px; font-weight: 700; border-radius: 4px; padding: 0 4px; flex: none; }
+  .st.added { background: var(--add-bg); color: var(--add-fg); }
+  .st.deleted { background: var(--del-bg); color: var(--del-fg); }
+  .st.modified { background: var(--panel-2); color: var(--muted); }
+  .linkbtn { background: none; border: 0; color: var(--accent); padding: 0; font-size: 12px; text-decoration: underline; flex: none; }
+  .btn { border: 1px solid var(--border); background: var(--panel-2); border-radius: 8px; padding: 4px 10px; font-size: 13px; }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 600; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .thumbs img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .file { font-size: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px; background: var(--panel); color: inherit; text-decoration: none; }
+  .stats { font-size: 11px; color: var(--muted); }
+
+  footer { border-top: 1px solid var(--border); background: var(--panel); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  #held {
+    max-width: 820px; margin: 0 auto 8px; display: none; gap: 10px; align-items: center; flex-wrap: wrap;
+    border: 1px solid var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--panel)); border-radius: 10px; padding: 8px 12px; font-size: 13px;
+  }
+  #held.on { display: flex; }
+  #held span { flex: 1; min-width: 200px; }
+  #chips { max-width: 820px; margin: 0 auto 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  #chips:empty { display: none; }
+  .chip { font-size: 12px; border: 1px solid var(--border); border-radius: 14px; padding: 2px 4px 2px 10px; display: flex; align-items: center; gap: 4px; background: var(--panel-2); }
+  .chip.up { opacity: .6; }
+  .chip button { background: none; border: 0; padding: 0 4px; color: var(--muted); }
+  .composer { max-width: 820px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
+  .ibtn { height: 44px; width: 40px; flex: none; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); font-size: 18px; color: var(--muted); }
+  .ibtn.on { border-color: var(--err); color: var(--err); animation: pulse 1.2s infinite; }
+  textarea {
+    flex: 1; resize: none; min-height: 44px; max-height: 40vh; padding: 10px 12px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; min-width: 0;
+  }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  #sendBtn { height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-text); font-weight: 600; flex: none; }
+  #sendBtn:disabled { opacity: .5; }
+  .hint { max-width: 820px; margin: 6px auto 0; font-size: 12px; color: var(--muted); }
+
+  /* dialogs */
+  dialog {
+    border: 1px solid var(--border); border-radius: 14px; background: var(--panel); color: var(--text);
+    padding: 0; width: min(640px, calc(100vw - 24px)); max-height: calc(100dvh - 40px);
+  }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .dlg-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); z-index: 1; }
+  .dlg-head h3 { margin: 0; font-size: 16px; flex: 1; }
+  .dlg-body { padding: 14px 16px; display: grid; gap: 14px; overflow-y: auto; }
+  .x { background: none; border: 0; font-size: 20px; color: var(--muted); padding: 0 4px; }
+  .section h5 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; }
+  .small { font-size: 12px; color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  .scroll-x { overflow-x: auto; }
+  select, input[type=time], input[type=number], .dlg-body textarea {
+    font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px;
+  }
+  .dlg-body textarea { min-height: 70px; width: 100%; }
+  .days { display: flex; gap: 4px; }
+  .days label { border: 1px solid var(--border); border-radius: 7px; padding: 2px 7px; font-size: 12px; cursor: pointer; user-select: none; }
+  .days input { display: none; }
+  .days input:checked + span { color: var(--accent); font-weight: 700; }
+  .job { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; display: grid; gap: 4px; }
+  .job.off { opacity: .55; }
+  .diff { font-family: ui-monospace, Consolas, monospace; font-size: 12px; white-space: pre; overflow: auto; margin: 0; background: var(--code); border-radius: 8px; padding: 8px 0; max-height: 65dvh; }
+  .diff span { display: block; padding: 0 10px; min-width: max-content; }
+  .diff .a { background: var(--add-bg); color: var(--add-fg); }
+  .diff .d { background: var(--del-bg); color: var(--del-fg); }
+  .diff .h { color: var(--hunk); }
+
+  @media (max-width: 640px) {
+    header { gap: 6px; padding-left: 10px; padding-right: 10px; }
+    header h1 { font-size: 15px; }
+    .hbtn { padding: 4px 7px; }
+    .hbtn .wide { display: none; }
+    .meter { min-width: 46px; }
+    #usageBtn { gap: 6px; padding: 4px 7px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <span id="conn" title="Disconnected"></span>
+  <h1>Claude Crew</h1>
+  <button class="hbtn" id="usageBtn" title="Plan usage">
+    <span class="meter"><span class="lbl"><span>5h</span><span id="u5">–</span></span><span class="bar" id="b5"><i></i></span></span>
+    <span class="meter"><span class="lbl"><span>Week</span><span id="uw">–</span></span><span class="bar" id="bw"><i></i></span></span>
+  </button>
+  <span class="spacer"></span>
+  <button class="hbtn" id="schedBtn" title="Scheduled jobs">⏰<span class="wide"> Schedules</span></button>
+  <button class="hbtn" id="actBtn" title="Show what agents are doing step by step">⚙<span class="wide"> Activity</span></button>
+  <button class="hbtn" id="notifyBtn" title="Notifications">🔔</button>
+  <a class="hbtn" id="signOut" href="#" hidden style="text-decoration:none">⎋<span class="wide"> Sign out</span></a>
+</header>
+<div id="agents"></div>
+<main id="scroller"><div id="log"></div></main>
+<footer>
+  <div id="held"><span id="heldText"></span><button class="btn primary" id="overrideBtn">Run anyway</button></div>
+  <div id="chips"></div>
+  <div class="composer">
+    <button class="ibtn" id="attachBtn" title="Attach photos or files">📎</button>
+    <input type="file" id="fileInput" multiple hidden accept="image/*,application/pdf,text/plain,.md,.log,.csv,.json,.txt">
+    <textarea id="input" rows="1" placeholder="Message the crew…"></textarea>
+    <button class="ibtn" id="micBtn" title="Dictate" hidden>🎤</button>
+    <button id="sendBtn">Send</button>
+  </div>
+  <div class="hint" id="hint"></div>
+</footer>
+
+<dialog id="usageDlg">
+  <div class="dlg-head"><h3>Plan usage</h3><button class="x" data-close>×</button></div>
+  <div class="dlg-body" id="usageBody"></div>
+</dialog>
+<dialog id="schedDlg">
+  <div class="dlg-head"><h3>Scheduled jobs</h3><button class="x" data-close>×</button></div>
+  <div class="dlg-body" id="schedBody"></div>
+</dialog>
+<dialog id="agentDlg">
+  <div class="dlg-head"><h3 id="agentTitle">Agent</h3><button class="x" data-close>×</button></div>
+  <div class="dlg-body" id="agentBody"></div>
+</dialog>
+<dialog id="diffDlg">
+  <div class="dlg-head"><h3 id="diffTitle">Changes</h3><button class="x" data-close>×</button></div>
+  <div class="dlg-body" id="diffBody"></div>
+</dialog>
+<dialog id="notifyDlg">
+  <div class="dlg-head"><h3>Notifications</h3><button class="x" data-close>×</button></div>
+  <div class="dlg-body" id="notifyBody"></div>
+</dialog>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+  let agents = {};
+  let order = [];
+  let userName = 'You';
+  let defaultAgent = '';
+  let usage = null;
+  let flags = {};
+  let schedules = [];
+  let modelChoices = [];
+  let pushKey = '';
+  const seen = new Set();
+  const msgs = new Map(); // id -> { m, el }
+  const drafts = new Map(); // agent id -> element
+
+  // ---------- tiny, safe markdown ----------
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function inline(s) {
+    return s
+      .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+      .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>')
+      .replace(/^#{1,6}\s+(.*)$/gm, '<b>$1</b>');
+  }
+  function md(text) {
+    const parts = esc(text).split(/```[^\n]*\n?/);
+    return parts.map((p, i) => {
+      if (i % 2) return `<pre><code>${p.replace(/\n$/, '')}</code></pre>`;
+      return p.split(/\n{2,}/).filter((x) => x.trim()).map((para) => `<p>${inline(para.trim())}</p>`).join('');
+    }).join('');
+  }
+  const time = (ts) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const pct = (u) => Math.round((u || 0) * 100);
+  const fmtTok = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n || 0);
+  const fmtDur = (ms) => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m`; };
+  const until = (t) => { const ms = t - Date.now(); if (ms <= 0) return 'now'; const m = Math.round(ms / 60000); return m < 60 ? `${m}m` : m < 1440 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h`; };
+  const when = (t) => { const d = new Date(t); const today = new Date().toDateString() === d.toDateString(); return (today ? '' : d.toLocaleDateString([], { weekday: 'short' }) + ' ') + time(t); };
+  function prettyModel(id) {
+    if (!id) return '';
+    const m = String(id).match(/(opus|sonnet|haiku|fable)-(\d+)(?:[-.](\d+))?/i);
+    return m ? `${m[1][0].toUpperCase()}${m[1].slice(1)} ${m[2]}${m[3] ? '.' + m[3] : ''}` : String(id).replace(/^claude-/, '');
+  }
+  const tokens = (t) => (t.input || 0) + (t.output || 0) + (t.cacheRead || 0) + (t.cacheWrite || 0);
+
+  // ---------- steampunk avatars ----------
+  // Each agent gets a brass gear medallion with an etched emblem. Unknown ids fall back to a bare cog.
+  const SP = (() => {
+    const gearPath = (cx, cy, r, R, n) => {
+      let d = '';
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2, w = Math.PI / n * 0.55;
+        const pts = [[r, a - w * 1.25], [R, a - w * 0.7], [R, a + w * 0.7], [r, a + w * 1.25]];
+        for (const [rr, aa] of pts) d += (d ? 'L' : 'M') + (cx + rr * Math.cos(aa)).toFixed(2) + ' ' + (cy + rr * Math.sin(aa)).toFixed(2);
+        const an = a + Math.PI / n;
+        d += 'A' + r + ' ' + r + ' 0 0 1 ' + (cx + r * Math.cos(an + w * 0.1)).toFixed(2) + ' ' + (cy + r * Math.sin(an + w * 0.1)).toFixed(2);
+      }
+      return d + 'Z';
+    };
+    const rivets = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+      const a = i / 8 * Math.PI * 2 + Math.PI / 8;
+      return `<circle cx="${(32 + 21.5 * Math.cos(a)).toFixed(1)}" cy="${(32 + 21.5 * Math.sin(a)).toFixed(1)}" r="1.1" fill="#f3d58a" stroke="#5a3a12" stroke-width=".4"/>`;
+    }).join('');
+    const frame = (emblem, face) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+      <defs>
+        <radialGradient id="b" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#f7dc8c"/><stop offset=".45" stop-color="#c8942f"/><stop offset="1" stop-color="#6b4413"/></radialGradient>
+        <radialGradient id="f" cx="40%" cy="35%" r="75%"><stop offset="0" stop-color="${face[0]}"/><stop offset="1" stop-color="${face[1]}"/></radialGradient>
+        <linearGradient id="e" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#c98a2a"/></linearGradient>
+      </defs>
+      <path d="${gearPath(32, 32, 27, 31.5, 14)}" fill="url(#b)" stroke="#4a2c0b" stroke-width="1"/>
+      <circle cx="32" cy="32" r="24" fill="#3a2410" stroke="#e8c26a" stroke-width="1"/>
+      <circle cx="32" cy="32" r="19.5" fill="url(#f)" stroke="#8a5a1c" stroke-width="1.2"/>
+      ${rivets}
+      <g fill="url(#e)" stroke="#3b230a" stroke-width=".9" stroke-linejoin="round" stroke-linecap="round">${emblem}</g>
+    </svg>`;
+    const E = {
+      // Compass rose: the coordinator
+      compass: [`<path d="M32 15 L35 29 L32 32 L29 29Z"/><path d="M32 49 L29 35 L32 32 L35 35Z" fill="#9c6a22"/>
+        <path d="M15 32 L29 29 L32 32 L29 35Z" fill="#9c6a22"/><path d="M49 32 L35 35 L32 32 L35 29Z"/>
+        <circle cx="32" cy="32" r="2.4" fill="#2a1a08"/>`, ['#1f3a3a', '#0c1a1c']],
+      // Crenellated keep with a lit window
+      castle: [`<path d="M23 47 V27 h-1.5 v-6 h4 v3 h3 v-3 h3 v3 h3 v-3 h3 v3 h3 v-3 h4 v6 H41 V47Z"/>
+        <path d="M29.5 47 v-6 a2.5 2.5 0 0 1 5 0 v6Z" fill="#2a1a08"/><rect x="30.6" y="30" width="2.8" height="4.5" rx="1.2" fill="#ffb347" stroke="none"/>`, ['#2b2140', '#120c1e']],
+      // Drafting dividers over a blueprint grid
+      blueprint: [`<g stroke="#4f7fa8" stroke-width=".5" fill="none" opacity=".8"><path d="M18 26h28M18 32h28M18 38h28M26 18v28M32 18v28M38 18v28"/></g>
+        <circle cx="32" cy="19.5" r="2.6"/><path d="M31 21.5 L22.5 45 L24.3 45.4 L32 24Z"/><path d="M33 21.5 L41.5 45 L39.7 45.4 L32 24Z"/>
+        <path d="M25 36.5 Q32 39.5 39 36.5" fill="none" stroke="#ffe9a8" stroke-width="1.4"/>`, ['#16324f', '#081626']],
+      // Crossed sabres with a hilt guard
+      swords: [`<path d="M20 19 L23 18 L43 41 L41.5 42.5Z"/><path d="M44 19 L41 18 L21 41 L22.5 42.5Z"/>
+        <path d="M38.5 41.5 l5 -4 l1.5 1.7 l-5 4Z"/><path d="M25.5 41.5 l-5 -4 l-1.5 1.7 l5 4Z"/>
+        <circle cx="45" cy="46" r="2.2"/><circle cx="19" cy="46" r="2.2"/>`, ['#3f1414', '#1c0707']],
+      // Crossed spanner and screwdriver
+      tools: [`<path d="M21 23.5 a5.5 5.5 0 0 1 7.6 -3.6 l-3.4 3.4 l1.3 2.3 l2.3 1.3 l3.4 -3.4 a5.5 5.5 0 0 1 -3.6 7.6 L44.5 43 l-2.5 2.5 L28.2 31.6 A5.5 5.5 0 0 1 21 23.5Z"/>
+        <path d="M43 19.5 l2.5 2.5 l-3 3 l-1.6 -.2 L31 34.7 l-1.7 -1.7 L39.2 23.1 l-.2 -1.6Z"/><path d="M29.6 33.2 l1.7 1.7 l-6.2 6.2 a1.6 1.6 0 0 1 -2.3 0 l.6 -.6 a1.6 1.6 0 0 1 0 -2.3Z" fill="#9c6a22"/>`, ['#14332a', '#071a14']],
+      // Cottage with a steaming chimney and a gauge
+      house: [`<path d="M18.5 32 L32 20 L45.5 32 L43 32 L43 46 L21 46 L21 32Z"/><rect x="37" y="21" width="3.6" height="7"/>
+        <path d="M38.8 19 q-2 -2.5 0 -4.5 q2 -2 .4 -4" fill="none" stroke="#e9e2cf" stroke-width="1.3" opacity=".85"/>
+        <circle cx="32" cy="37" r="4.3" fill="#f3ead2"/><path d="M32 37 L34.4 34.6" stroke="#7a1a0a" stroke-width="1.2"/><circle cx="32" cy="37" r=".9" fill="#3b230a"/>`, ['#2c2a14', '#141306']],
+      _: [`<path d="${gearPath(32, 32, 8, 11, 8)}"/><circle cx="32" cy="32" r="3.5" fill="#2a1a08"/>`, ['#2a2a2a', '#111']],
+    };
+    const cache = {};
+    // Emblem comes from the agent's "avatar" in crew.config.json; the coordinator defaults to the compass.
+    return (id) => {
+      const key = agents[id]?.avatar || (id === 'assistant' ? 'compass' : id);
+      return cache[key] ??= 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(frame(...(E[key] || E._)));
+    };
+  })();
+  const avatar = (id, cls = '') => `<img class="spav ${cls}" src="${SP(id)}" alt="">`;
+
+  // ---------- dialogs ----------
+  document.querySelectorAll('dialog').forEach((d) => {
+    d.addEventListener('click', (e) => { if (e.target === d || e.target.closest('[data-close]')) d.close(); });
+  });
+  const open = (id) => { const d = $(id); if (!d.open) d.showModal(); };
+
+  // ---------- usage meter ----------
+  function setBar(bar, u) {
+    bar.classList.toggle('warn', u >= 0.7 && u < 0.9);
+    bar.classList.toggle('hot', u >= 0.9);
+    bar.querySelector('i').style.width = Math.min(100, pct(u)) + '%';
+  }
+  function renderUsage() {
+    const l = usage?.limits;
+    const f = l?.fiveHour, w = l?.weekly;
+    $('#u5').textContent = f ? pct(f.utilization) + '%' : '–';
+    $('#uw').textContent = w ? pct(w.utilization) + '%' : '–';
+    setBar($('#b5'), f?.utilization || 0);
+    setBar($('#bw'), w?.utilization || 0);
+    $('#usageBtn').title = l ? `5-hour: ${pct(f?.utilization)}%${f?.resetsAt ? `, resets in ${until(f.resetsAt)}` : ''}\nWeekly: ${pct(w?.utilization)}%${w?.resetsAt ? `, resets in ${until(w.resetsAt)}` : ''}\nUpdated ${when(l.updatedAt)}` : 'No usage reading yet: it arrives with the next agent reply.';
+    const g = usage?.guard;
+    $('#held').classList.toggle('on', !!g && Object.values(agents).some((a) => a.status === 'held'));
+    if (g) $('#heldText').textContent = `Holding new work: ${g.window} usage is ${pct(g.utilization)}% (guard at ${pct(g.threshold)}%). Resumes ${when(g.resumesAt)}.`;
+    if ($('#usageDlg').open) renderUsageDialog();
+  }
+  function renderUsageDialog() {
+    const l = usage?.limits;
+    const win = (name, w) => `<div class="section"><div class="row"><b class="grow">${name}</b><span>${w ? pct(w.utilization) + '%' : '–'}</span></div>
+      <div class="bar big ${w && w.utilization >= 0.9 ? 'hot' : w && w.utilization >= 0.7 ? 'warn' : ''}"><i style="width:${w ? Math.min(100, pct(w.utilization)) : 0}%"></i></div>
+      <div class="small">${w?.resetsAt ? `Resets in ${until(w.resetsAt)} (${when(w.resetsAt)})` : w?.expired ? 'Window has reset; next reading arrives with the next reply.' : ''}</div></div>`;
+    const b = usage?.budget || {};
+    const opts = (cur) => [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1].map((v) => `<option value="${v}" ${Math.abs(v - cur) < 1e-6 ? 'selected' : ''}>${pct(v)}%</option>`).join('');
+    const rows = order.map((id) => {
+      const t = usage?.agents?.[id] || { today: {}, week: {} };
+      return `<tr><td>${avatar(id, 'mini')} ${esc(agents[id]?.name || id)}</td><td>${t.today.runs || 0}</td><td>${fmtTok(tokens(t.today))}</td><td>${t.week.runs || 0}</td><td>${fmtTok(tokens(t.week))}</td></tr>`;
+    }).join('');
+    const tot = usage?.total || { today: {}, week: {} };
+    $('#usageBody').innerHTML = `
+      ${l ? win('5-hour window', l.fiveHour) + win('Weekly', l.weekly) + `<div class="small">Your whole Claude account, including Claude Code you use yourself. Last reading ${when(l.updatedAt)}; it refreshes with every agent reply.</div>`
+        : '<div class="small">No reading yet. It arrives with the next agent reply.</div>'}
+      <div class="section"><h5>Budget guard</h5>
+        <div class="row"><label class="row"><input type="checkbox" id="bgOn" ${b.enabled ? 'checked' : ''}> Hold new work when usage is high</label></div>
+        <div class="row small" style="margin-top:6px">5-hour at <select id="bg5">${opts(b.fiveHour)}</select> · weekly at <select id="bgW">${opts(b.weekly)}</select></div>
+        <div class="small" style="margin-top:6px">Held messages wait and run automatically when the window resets.${usage?.overrideUntil ? ` <b>Overridden until ${when(usage.overrideUntil)}.</b>` : ''}</div>
+      </div>
+      <div class="section"><h5>By agent</h5><div class="scroll-x"><table>
+        <tr><th>Agent</th><th>Runs today</th><th>Tokens today</th><th>Runs 7d</th><th>Tokens 7d</th></tr>${rows}
+        <tr><th>Total</th><th>${tot.today.runs || 0}</th><th>${fmtTok(tokens(tot.today))}</th><th>${tot.week.runs || 0}</th><th>${fmtTok(tokens(tot.week))}</th></tr>
+      </table></div></div>`;
+    const saveBudget = () => api('/api/budget', { enabled: $('#bgOn').checked, fiveHour: +$('#bg5').value, weekly: +$('#bgW').value });
+    $('#bgOn').onchange = $('#bg5').onchange = $('#bgW').onchange = saveBudget;
+  }
+  $('#usageBtn').onclick = () => { renderUsageDialog(); open('#usageDlg'); };
+  $('#overrideBtn').onclick = () => api('/api/budget/override');
+  setInterval(renderUsage, 30000);
+
+  // ---------- agents strip ----------
+  function renderAgent(a) {
+    let el = document.getElementById('agent-' + a.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'agent-' + a.id;
+      el.innerHTML = `<span class="badge">!</span><span class="emo"></span><span class="nm"><span class="dot"></span><span class="n"></span><span class="mdl"></span></span>
+        <span class="tools"><button data-act="stop" title="Stop">■</button><button data-act="more" title="Model, usage, reset">⋯</button></span>
+        <span class="act"></span>`;
+      el.querySelector('.emo').onclick = el.querySelector('.nm').onclick = () => mention(a.id);
+      el.querySelector('[data-act=stop]').onclick = () => api(`/api/agents/${a.id}/stop`);
+      el.querySelector('[data-act=more]').onclick = () => openAgent(a.id);
+      el.querySelector('.badge').onclick = () => jumpTo(agents[a.id]?.needsYou?.msgId);
+      $('#agents').appendChild(el);
+    }
+    el.className = `agent ${a.status}${a.missing ? ' missing' : ''}${a.needsYou ? ' needs' : ''}`;
+    el.title = `${a.description}\n${a.cwd}`;
+    el.querySelector('.emo').innerHTML = avatar(a.id);
+    el.querySelector('.n').textContent = a.name;
+    const mdl = a.model ? a.model[0].toUpperCase() + a.model.slice(1) : prettyModel(a.lastModel);
+    el.querySelector('.mdl').textContent = mdl;
+    el.querySelector('.mdl').style.display = mdl ? '' : 'none';
+    el.querySelector('[data-act=stop]').style.display = a.status === 'idle' ? 'none' : '';
+    const act = a.missing ? 'Folder not found'
+      : a.needsYou ? 'Needs you: ' + a.needsYou.text
+      : a.status === 'working' ? a.activity || 'Working…'
+      : a.status === 'held' ? `Held by usage guard (${a.queued})`
+      : a.status === 'queued' ? `Waiting (${a.queued} queued)`
+      : '@' + a.id;
+    el.querySelector('.act').textContent = a.resetPending ? `${act} · fresh start next` : act;
+    if ($('#agentDlg').open && $('#agentDlg').dataset.id === a.id) renderAgentDialog(a.id);
+  }
+
+  function openAgent(id) { $('#agentDlg').dataset.id = id; renderAgentDialog(id); open('#agentDlg'); }
+  function renderAgentDialog(id) {
+    const a = agents[id];
+    if (!a) return;
+    const t = usage?.agents?.[id] || { today: {}, week: {} };
+    $('#agentTitle').innerHTML = `${avatar(id, 'mini')} ${esc(a.name)}`;
+    const choice = (v, label) => `<option value="${v}" ${(a.model || '') === v ? 'selected' : ''}>${label}</option>`;
+    $('#agentBody').innerHTML = `
+      ${a.needsYou ? `<div class="card alert"><h4>Needs you</h4>${esc(a.needsYou.text)}<div class="row" style="margin-top:6px"><button class="btn" id="agJump">Show message</button></div></div>` : ''}
+      <div class="section"><h5>Model</h5>
+        <div class="row"><select id="agModel">${choice('', `Default${a.defaultModel ? ' (' + esc(a.defaultModel) + ')' : ''}`)}${modelChoices.map((m) => choice(m, m[0].toUpperCase() + m.slice(1))).join('')}</select>
+        <span class="small grow">${a.lastModel ? 'Last run: ' + esc(prettyModel(a.lastModel)) : ''}</span></div>
+        <div class="small" style="margin-top:4px">Sonnet and Haiku use less of your plan for quick chores. Applies from the next message.</div></div>
+      <div class="section"><h5>Usage</h5>
+        <div class="small">Today: ${t.today.runs || 0} runs, ${fmtTok(tokens(t.today))} tokens, ${fmtDur(t.today.ms || 0)} · 7 days: ${t.week.runs || 0} runs, ${fmtTok(tokens(t.week))} tokens</div></div>
+      <div class="section"><h5>Folder</h5><div class="small" style="word-break:break-all">${esc(a.cwd)}</div></div>
+      <div class="row"><button class="btn" id="agReset">↺ Fresh conversation</button>${a.status !== 'idle' ? '<button class="btn" id="agStop">■ Stop</button>' : ''}<span class="grow"></span><button class="btn" id="agMention">@${esc(id)}</button></div>`;
+    $('#agModel').onchange = () => api(`/api/agents/${id}/model`, { model: $('#agModel').value || null });
+    $('#agReset').onclick = () => {
+      const w = a.status === 'working' ? ' It will finish what it is doing first.' : '';
+      if (confirm(`Start a fresh conversation with ${a.name}? It will forget this chat's context.${w}`)) api(`/api/agents/${id}/reset`);
+    };
+    if ($('#agStop')) $('#agStop').onclick = () => api(`/api/agents/${id}/stop`);
+    $('#agMention').onclick = () => { $('#agentDlg').close(); mention(id); };
+    if ($('#agJump')) $('#agJump').onclick = () => { $('#agentDlg').close(); jumpTo(a.needsYou.msgId); };
+  }
+
+  function mention(id) {
+    const ta = $('#input');
+    const tag = '@' + id + ' ';
+    if (!ta.value.includes(tag)) ta.value = tag + ta.value;
+    ta.focus();
+    autosize();
+  }
+  function jumpTo(id) {
+    const x = id && msgs.get(id);
+    if (!x) return;
+    x.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    x.el.animate([{ background: 'color-mix(in srgb, var(--accent) 18%, transparent)' }, { background: 'transparent' }], { duration: 1600 });
+  }
+
+  // ---------- messages ----------
+  function nameOf(id) { return id === 'user' ? userName : agents[id]?.name || id; }
+
+  function renderExtras(m, box) {
+    const f = flags[m.id] || {};
+    let html = '';
+    if (m.attachments?.length) {
+      const imgs = m.attachments.filter((a) => a.type?.startsWith('image/'));
+      const files = m.attachments.filter((a) => !a.type?.startsWith('image/'));
+      if (imgs.length) html += `<div class="thumbs">${imgs.map((a) => `<a href="/api/uploads/${esc(a.id)}" target="_blank"><img src="/api/uploads/${esc(a.id)}" alt="${esc(a.name)}" loading="lazy"></a>`).join('')}</div>`;
+      if (files.length) html += `<div class="thumbs">${files.map((a) => `<a class="file" href="/api/uploads/${esc(a.id)}">📄 ${esc(a.name)}</a>`).join('')}</div>`;
+    }
+    if (m.denials?.length) {
+      html += `<div class="card alert"><h4>${f.approved ? '✅ Approved' : 'Permission needed'}</h4><ul>${m.denials.map((d) => `<li><span class="p" title="${esc(d.rule)}">${esc(d.label)}</span></li>`).join('')}</ul>
+        ${f.approved ? '' : `<div class="row" style="margin-top:6px"><button class="btn primary" data-approve>Approve once and continue</button><span class="small">Only these exact actions, for its next run.</span></div>`}</div>`;
+    }
+    if (m.changes?.files?.length) {
+      const c = m.changes;
+      const undone = f.undone;
+      html += `<div class="card"><h4>${undone ? '↩ Undone · ' : ''}${c.files.length + (c.more || 0)} file${c.files.length + (c.more || 0) === 1 ? '' : 's'} changed
+        ${c.repo && !undone ? '<span class="grow"></span><button class="btn" data-undo>Undo</button>' : ''}</h4>
+        <ul>${c.files.slice(0, 30).map((x) => `<li><span class="st ${x.status}">${x.status === 'added' ? 'A' : x.status === 'deleted' ? 'D' : 'M'}</span><span class="p" title="${esc(x.path)}">${esc(x.path)}</span>${c.repo ? `<button class="linkbtn" data-diff="${esc(x.path)}">diff</button>` : ''}</li>`).join('')}</ul>
+        ${c.files.length > 30 || c.more ? `<div class="small">…and ${c.files.length - 30 + (c.more || 0)} more</div>` : ''}
+        ${undone?.skipped?.length ? `<div class="small">Not undone: ${undone.skipped.map((s) => esc(s.path)).join(', ')}</div>` : ''}
+        ${c.repo ? '' : '<div class="small">Not a git folder, so no diff or undo.</div>'}</div>`;
+    }
+    if (m.stats && m.from !== 'user') {
+      html += `<div class="stats">${[prettyModel(m.model), m.stats.ms ? fmtDur(m.stats.ms) : ''].filter(Boolean).join(' · ')}</div>`;
+    }
+    box.innerHTML = html;
+    box.style.display = html ? '' : 'none';
+    box.querySelector('[data-approve]')?.addEventListener('click', (e) => { e.target.disabled = true; api('/api/approve', { id: m.id }); });
+    box.querySelector('[data-undo]')?.addEventListener('click', async (e) => {
+      if (!confirm(`Undo ${nameOf(m.from)}'s changes to ${m.changes.files.length} file(s)? Files changed again since then are left alone.`)) return;
+      e.target.disabled = true;
+      const r = await api(`/api/changes/${m.id}/undo`);
+      if (!r.ok) e.target.disabled = false;
+    });
+    box.querySelectorAll('[data-diff]').forEach((b) => b.addEventListener('click', () => showDiff(m, b.dataset.diff)));
+  }
+
+  async function showDiff(m, file) {
+    $('#diffTitle').textContent = file;
+    $('#diffBody').innerHTML = '<div class="small">Loading…</div>';
+    open('#diffDlg');
+    const r = await fetch(`/api/changes/${m.id}/diff?path=${encodeURIComponent(file)}`);
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { $('#diffBody').innerHTML = `<div class="small">${esc(j.error || 'Could not load the diff.')}</div>`; return; }
+    const lines = String(j.diff).split('\n').map((l) => {
+      const cls = l.startsWith('+++') || l.startsWith('---') || l.startsWith('diff ') || l.startsWith('index ') ? 'h'
+        : l.startsWith('@@') ? 'h' : l.startsWith('+') ? 'a' : l.startsWith('-') ? 'd' : '';
+      return `<span class="${cls}">${esc(l) || ' '}</span>`;
+    }).join('');
+    $('#diffBody').innerHTML = `<div class="small">The file now, compared with how it was just before ${esc(nameOf(m.from))}'s turn (${time(m.ts)}).</div><pre class="diff">${lines}</pre>`;
+  }
+
+  function render(m) {
+    if (seen.has(m.id)) return;
+    seen.add(m.id);
+    const log = $('#log');
+    log.querySelector('.empty')?.remove();
+    const nearBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 160;
+    let el;
+    if (m.kind === 'activity') {
+      el = document.createElement('div');
+      el.className = 'activity';
+      el.innerHTML = `${avatar(m.from, 'mini')} ${esc(nameOf(m.from))} · ${esc(m.text)}`;
+    } else if (m.kind === 'system') {
+      el = document.createElement('div');
+      el.className = 'note';
+      el.textContent = m.text;
+      if (m.changes) {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'max-width:520px;margin:6px auto 0;text-align:left';
+        el.appendChild(wrap);
+        renderExtras(m, wrap);
+      }
+    } else {
+      const you = m.from === 'user';
+      el = document.createElement('div');
+      el.className = `msg${you ? ' you' : ''}${m.kind === 'error' ? ' err' : ''}`;
+      const to = (m.to || []).map((t) => `<span class="tag">→ ${esc(nameOf(t))}</span>`).join('');
+      const needs = m.needs ? `<span class="tag needs" title="${esc(m.needs)}">Needs you</span>` : '';
+      el.innerHTML = `${you ? '' : `<div class="av">${avatar(m.from)}</div>`}
+        <div class="body"><div class="meta">${you ? '' : `<b>${esc(nameOf(m.from))}</b>`}<span>${time(m.ts)}</span>${to}${needs}</div>
+        <div class="bubble">${m.kind === 'error' ? esc(m.text) : md(m.text)}</div><div class="extras"></div></div>`;
+      renderExtras(m, el.querySelector('.extras'));
+      // A finished reply replaces that agent's live draft.
+      if (!you && drafts.has(m.from)) { drafts.get(m.from).remove(); drafts.delete(m.from); }
+    }
+    msgs.set(m.id, { m, el });
+    // Live "typing" bubbles stay at the bottom; everything else goes above them.
+    const draftFirst = [...drafts.values()][0];
+    if (draftFirst) log.insertBefore(el, draftFirst); else log.appendChild(el);
+    if (nearBottom || m.from === 'user') scroller.scrollTop = scroller.scrollHeight;
+    return el;
+  }
+
+  function renderDraft(agent, text) {
+    let el = drafts.get(agent);
+    if (!text) { if (el) { el.remove(); drafts.delete(agent); } return; }
+    const nearBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 160;
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'msg draft';
+      el.innerHTML = `<div class="av">${avatar(agent)}</div><div class="body"><div class="meta"><b>${esc(nameOf(agent))}</b><span>typing…</span></div><div class="bubble"></div></div>`;
+      $('#log').appendChild(el);
+      drafts.set(agent, el);
+    }
+    el.querySelector('.bubble').innerHTML = md(text) || '<p></p>';
+    if (nearBottom) scroller.scrollTop = scroller.scrollHeight;
+  }
+
+  // ---------- server ----------
+  async function api(url, body) {
+    const r = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Crew': '1' },
+      body: JSON.stringify(body || {}),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok && j.error) alert(j.error);
+    return { ...j, ok: r.ok && j.ok !== false };
+  }
+
+  async function load() {
+    const r = await fetch('/api/state');
+    if (r.status === 401) { location.reload(); return; }
+    const s = await r.json();
+    userName = s.userName;
+    defaultAgent = s.defaultAgent;
+    usage = s.usage;
+    flags = s.flags || {};
+    schedules = s.schedules || [];
+    modelChoices = s.modelChoices || [];
+    pushKey = s.pushKey || '';
+    if (s.signOutUrl) {
+      $('#signOut').href = s.signOutUrl;
+      $('#signOut').title = `Signed in as ${s.signedInAs}`;
+      $('#signOut').hidden = false;
+    }
+    order = s.agents.map((a) => a.id);
+    agents = Object.fromEntries(s.agents.map((a) => [a.id, a]));
+    s.agents.forEach(renderAgent);
+    $('#hint').textContent = `Goes to ${agents[defaultAgent].name} unless you @mention someone (${order.map((id) => '@' + id).join(', ')}, @all). Tap an agent to mention it.`;
+    if (!s.history.length && !$('#log').children.length) {
+      $('#log').innerHTML = '<div class="empty">Say hi to the crew. Your agents run Claude Code on this PC with your own login.</div>';
+    }
+    s.history.forEach(render);
+    for (const [id, f] of Object.entries(flags)) { const x = msgs.get(id); if (x) { const box = x.el.querySelector('.extras') || x.el.querySelector('div[style]'); if (box) renderExtras(x.m, box); } }
+    for (const [agent, text] of Object.entries(s.drafts || {})) renderDraft(agent, text);
+    renderUsage();
+    if ($('#schedDlg').open) renderSchedules();
+    scroller.scrollTop = scroller.scrollHeight;
+    syncNotifyBtn();
+  }
+
+  function connect() {
+    const es = new EventSource('/events');
+    es.onopen = () => { $('#conn').className = 'on'; $('#conn').title = 'Connected'; load(); };
+    es.onerror = () => { $('#conn').className = ''; $('#conn').title = 'Reconnecting…'; };
+    es.addEventListener('agent', (e) => { const a = JSON.parse(e.data); agents[a.id] = a; renderAgent(a); renderUsage(); });
+    es.addEventListener('message', (e) => {
+      const m = JSON.parse(e.data);
+      render(m);
+      if (document.hidden && !pushActive && m.from !== 'user' && (m.kind === 'chat' || m.kind === 'error')) notifyLocal(m);
+    });
+    es.addEventListener('draft', (e) => { const d = JSON.parse(e.data); renderDraft(d.agent, d.text); });
+    es.addEventListener('usage', (e) => { usage = JSON.parse(e.data); renderUsage(); });
+    es.addEventListener('flags', (e) => {
+      const d = JSON.parse(e.data);
+      flags[d.id] = d.flags;
+      const x = msgs.get(d.id);
+      if (x) { const box = x.el.querySelector('.extras') || x.el.querySelector('div[style]'); if (box) renderExtras(x.m, box); }
+    });
+    es.addEventListener('schedules', (e) => { schedules = JSON.parse(e.data); if ($('#schedDlg').open) renderSchedules(); });
+  }
+
+  // ---------- schedules ----------
+  const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function dayText(days) {
+    const k = [...days].sort().join('');
+    return k === '0123456' ? 'Every day' : k === '12345' ? 'Weekdays' : k === '06' ? 'Weekends' : days.map((d) => DAY[d]).join(', ');
+  }
+  function renderSchedules() {
+    const agentOpts = order.map((id) => `<option value="${id}">${esc(agents[id].name)}</option>`).join('');
+    const list = schedules.length ? schedules.map((j) => `<div class="job ${j.enabled ? '' : 'off'}" data-id="${esc(j.id)}">
+        <div class="row"><b>${avatar(j.agent, 'mini')} ${esc(agents[j.agent]?.name || j.agent)}</b>
+          <span class="small grow">${j.kind === 'interval' ? `Every ${j.everyHours} h` : `${dayText(j.days)} at ${esc(j.time)}`}${j.nextRun ? ` · next ${when(j.nextRun)}` : ''}</span>
+          <label class="small"><input type="checkbox" data-toggle ${j.enabled ? 'checked' : ''}> On</label></div>
+        <div>${esc(j.text)}</div>
+        <div class="row"><button class="btn" data-run>Run now</button><button class="btn" data-del>Delete</button>${j.lastRun ? `<span class="small">Last ran ${when(j.lastRun)}</span>` : ''}</div>
+      </div>`).join('') : '<div class="small">No scheduled jobs yet.</div>';
+    $('#schedBody').innerHTML = `${list}
+      <div class="section"><h5>New job</h5>
+        <div class="row"><select id="sjAgent">${agentOpts}</select>
+          <select id="sjKind"><option value="daily">At a time</option><option value="interval">Every few hours</option></select>
+          <span id="sjDaily" class="row"><input type="time" id="sjTime" value="08:00">
+            <span class="days">${DAY.map((d, i) => `<label><input type="checkbox" value="${i}" ${i >= 1 && i <= 5 ? 'checked' : ''}><span>${d[0]}</span></label>`).join('')}</span></span>
+          <span id="sjInt" class="row" hidden>every <input type="number" id="sjEvery" value="4" min="0.25" step="0.25" style="width:70px"> hours</span></div>
+        <textarea id="sjText" placeholder="What should the agent do? e.g. Run the tests and tell me if anything broke."></textarea>
+        <div class="row"><button class="btn primary" id="sjAdd">Add job</button><span class="small">Runs as a message from you. Respects the usage guard.</span></div>
+      </div>`;
+    $('#sjKind').onchange = () => { const d = $('#sjKind').value === 'daily'; $('#sjDaily').hidden = !d; $('#sjInt').hidden = d; };
+    $('#sjAdd').onclick = async () => {
+      const r = await api('/api/schedules', {
+        agent: $('#sjAgent').value, text: $('#sjText').value, kind: $('#sjKind').value, time: $('#sjTime').value,
+        days: [...document.querySelectorAll('#sjDaily .days input:checked')].map((x) => +x.value), everyHours: +$('#sjEvery').value,
+      });
+      if (r.ok) $('#sjText').value = '';
+    };
+    document.querySelectorAll('.job').forEach((el) => {
+      const id = el.dataset.id;
+      el.querySelector('[data-toggle]').onchange = (e) => api(`/api/schedules/${id}`, { enabled: e.target.checked });
+      el.querySelector('[data-run]').onclick = () => api(`/api/schedules/${id}/run`);
+      el.querySelector('[data-del]').onclick = () => { if (confirm('Delete this scheduled job?')) api(`/api/schedules/${id}/delete`); };
+    });
+  }
+  $('#schedBtn').onclick = () => { renderSchedules(); open('#schedDlg'); };
+
+  // ---------- notifications (push to this device, with an in-page fallback) ----------
+  const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  let pushActive = false;
+  let swReg = null;
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  async function currentSub() {
+    if (!pushSupported) return null;
+    swReg = swReg || await navigator.serviceWorker.register('/sw.js').catch(() => null);
+    return swReg ? swReg.pushManager.getSubscription() : null;
+  }
+  async function syncNotifyBtn() {
+    const sub = await currentSub().catch(() => null);
+    pushActive = !!sub;
+    $('#notifyBtn').classList.toggle('on', pushActive || localNotifyOn());
+  }
+  function localNotifyOn() { return 'Notification' in window && Notification.permission === 'granted' && store.get('crew-notify') === 'on'; }
+  function notifyLocal(m) {
+    if (!localNotifyOn()) return;
+    try { new Notification(nameOf(m.from), { body: m.text.slice(0, 180), tag: m.from, icon: SP(m.from) }); } catch {}
+  }
+  const b64ToBytes = (b) => Uint8Array.from(atob(b.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - b.length % 4) % 4)), (c) => c.charCodeAt(0));
+  function deviceLabel() {
+    const ua = navigator.userAgent;
+    return /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows PC' : /Mac/.test(ua) ? 'Mac' : 'Browser';
+  }
+  async function renderNotify() {
+    const sub = await currentSub().catch(() => null);
+    pushActive = !!sub;
+    let html;
+    if (pushSupported) {
+      html = sub
+        ? `<div>✅ Push notifications are <b>on</b> for this ${esc(deviceLabel())}. Agents' replies and "needs you" alerts arrive even when Crew is closed.</div>
+           <div class="row"><button class="btn" id="nTest">Send a test</button><button class="btn" id="nOff">Turn off on this device</button></div>`
+        : `<div>Get a notification on this ${esc(deviceLabel())} when an agent replies or needs you, even when Crew is closed.</div>
+           <div class="row"><button class="btn primary" id="nOn">Turn on notifications</button></div>`;
+    } else if (isIOS && !standalone) {
+      html = `<div>On iPhone, notifications work once Crew is on your home screen:</div>
+        <ol style="margin:0;padding-left:20px"><li>Tap <b>Share</b> → <b>Add to Home Screen</b>.</li><li>Open <b>Crew</b> from the home screen.</li><li>Tap 🔔 there and turn notifications on.</li></ol>`;
+    } else {
+      html = `<div>This browser can't receive push notifications. You can still get a pop-up while this tab is open in the background.</div>
+        <div class="row"><button class="btn" id="nLocal">${localNotifyOn() ? 'Turn off pop-ups' : 'Turn on pop-ups'}</button></div>`;
+    }
+    $('#notifyBody').innerHTML = html + '<div class="small">The Crew tray icon on your PC has its own notification setting.</div>';
+    $('#nOn')?.addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      try {
+        if ((await Notification.requestPermission()) !== 'granted') throw new Error('Notifications were blocked. Allow them for this site in your browser or phone settings.');
+        const reg = swReg || await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+        const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(pushKey) });
+        const r = await api('/api/push/subscribe', { subscription: s.toJSON(), label: deviceLabel() });
+        if (r.ok) await api('/api/push/test', { endpoint: s.endpoint });
+      } catch (err) { alert(err.message || String(err)); }
+      await syncNotifyBtn();
+      renderNotify();
+    });
+    $('#nTest')?.addEventListener('click', async () => { const s = await currentSub(); if (s) api('/api/push/test', { endpoint: s.endpoint }); });
+    $('#nOff')?.addEventListener('click', async () => {
+      const s = await currentSub();
+      if (s) { await api('/api/push/unsubscribe', { endpoint: s.endpoint }); await s.unsubscribe().catch(() => {}); }
+      await syncNotifyBtn();
+      renderNotify();
+    });
+    $('#nLocal')?.addEventListener('click', async () => {
+      if (localNotifyOn()) store.set('crew-notify', 'off');
+      else { store.set('crew-notify', 'on'); if (Notification.permission !== 'granted') await Notification.requestPermission(); }
+      syncNotifyBtn();
+      renderNotify();
+    });
+  }
+  $('#notifyBtn').onclick = () => { renderNotify(); open('#notifyDlg'); };
+
+  // ---------- activity toggle ----------
+  function setActivity(on) { document.body.classList.toggle('show-activity', on); $('#actBtn').classList.toggle('on', on); store.set('crew-activity', on ? '1' : '0'); }
+  $('#actBtn').onclick = () => setActivity(!document.body.classList.contains('show-activity'));
+
+  // ---------- attachments ----------
+  let pending = []; // { id?, name, uploading }
+  function renderChips() {
+    $('#chips').innerHTML = pending.map((p, i) => `<span class="chip ${p.id ? '' : 'up'}">${p.type?.startsWith('image/') ? '🖼' : '📄'} ${esc(p.name)}${p.id ? '' : ' …'}<button data-i="${i}" title="Remove">×</button></span>`).join('');
+    $('#chips').querySelectorAll('button').forEach((b) => b.onclick = () => { pending.splice(+b.dataset.i, 1); renderChips(); });
+  }
+  async function upload(file) {
+    const p = { name: file.name || 'pasted-image.png', type: file.type };
+    pending.push(p);
+    renderChips();
+    try {
+      const r = await fetch('/api/upload', { method: 'POST', headers: { 'X-Crew': '1', 'X-Filename': encodeURIComponent(p.name), 'Content-Type': 'application/octet-stream' }, body: file });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Upload failed');
+      Object.assign(p, j);
+    } catch (e) {
+      pending = pending.filter((x) => x !== p);
+      alert(`${p.name}: ${e.message}`);
+    }
+    renderChips();
+  }
+  $('#attachBtn').onclick = () => $('#fileInput').click();
+  $('#fileInput').onchange = (e) => { [...e.target.files].forEach(upload); e.target.value = ''; };
+  document.addEventListener('paste', (e) => {
+    const files = [...(e.clipboardData?.files || [])];
+    if (files.length) { e.preventDefault(); files.forEach(upload); }
+  });
+
+  // ---------- voice ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null;
+  if (SR) {
+    $('#micBtn').hidden = false;
+    $('#micBtn').onclick = () => {
+      if (rec) { rec.stop(); return; }
+      rec = new SR();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = navigator.language || 'en-US';
+      const base = ta.value ? ta.value.replace(/\s*$/, ' ') : '';
+      rec.onresult = (ev) => {
+        let said = '';
+        for (const r of ev.results) said += r[0].transcript;
+        ta.value = base + said;
+        autosize();
+      };
+      rec.onend = () => { rec = null; $('#micBtn').classList.remove('on'); };
+      rec.onerror = (ev) => { if (ev.error === 'not-allowed') alert('Microphone access was blocked for this site.'); };
+      rec.start();
+      $('#micBtn').classList.add('on');
+    };
+  }
+
+  // ---------- composer ----------
+  const ta = $('#input');
+  function autosize() { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, innerHeight * 0.4) + 'px'; }
+  ta.addEventListener('input', autosize);
+  const touch = matchMedia('(pointer: coarse)').matches;
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !touch) { e.preventDefault(); sendMsg(); }
+  });
+  $('#sendBtn').onclick = sendMsg;
+  async function sendMsg() {
+    const text = ta.value.trim();
+    if (pending.some((p) => !p.id)) return alert('Still uploading — one moment.');
+    const attachments = pending.map((p) => p.id);
+    if (!text && !attachments.length) return;
+    if (rec) rec.stop();
+    $('#sendBtn').disabled = true;
+    try {
+      const r = await api('/api/send', { text, attachments });
+      if (r.ok) { ta.value = ''; pending = []; renderChips(); autosize(); }
+    } finally {
+      $('#sendBtn').disabled = false;
+      ta.focus();
+    }
+  }
+
+  const scroller = $('#scroller');
+  setActivity(store.get('crew-activity') === '1');
+  connect();
+})();
+</script>
+</body>
+</html>

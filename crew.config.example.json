@@ -1,0 +1,51 @@
+{
+  "settings": {
+    "port": 7777,
+    "allowLan": false,
+    "userName": "You",
+    "defaultAgent": "assistant",
+    "maxHops": 1,
+    "maxConcurrent": 2,
+    "permissionMode": "auto",
+    "model": null,
+    "claudePath": null,
+    "budget": { "enabled": true, "fiveHour": 0.85, "weekly": 0.95 }
+  },
+  "cloudflare": {
+    "enabled": false,
+    "hostname": "crew.example.com",
+    "teamDomain": "myteam.cloudflareaccess.com",
+    "aud": "your-access-application-aud-tag",
+    "port": 7778,
+    "allowedEmails": ["you@example.com"]
+  },
+  "agents": [
+    {
+      "id": "assistant",
+      "name": "Assistant",
+      "emoji": "🧭",
+      "avatar": "compass",
+      "cwd": "workspace/assistant",
+      "description": "General helper and coordinator. Answers questions, makes plans, and hands project work to the right teammate.",
+      "instructions": "You coordinate the crew. Answer general questions yourself. When a request belongs to a teammate's project, hand it to that one teammate with a short, specific brief."
+    },
+    {
+      "id": "webapp",
+      "name": "WebApp",
+      "emoji": "🛠️",
+      "avatar": "tools",
+      "cwd": "workspace/webapp",
+      "description": "Works on the my-web-app project: features, bug fixes and tests.",
+      "instructions": "Run the test suite before you say a change is done. Commit locally only; never push."
+    },
+    {
+      "id": "docs",
+      "name": "Docs",
+      "emoji": "📘",
+      "avatar": "blueprint",
+      "cwd": "workspace/docs",
+      "description": "Writes and edits documentation, notes and plans. Never changes code.",
+      "permissionMode": "acceptEdits"
+    }
+  ]
+}

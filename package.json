@@ -1,0 +1,16 @@
+{
+  "name": "claude-crew",
+  "version": "0.1.0",
+  "private": true,
+  "author": "Hast3",
+  "license": "MIT",
+  "homepage": "https://github.com/hast3/claudecrew",
+  "description": "A local chat room for a team of Claude Code agents that can hand work to each other.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js --open"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
