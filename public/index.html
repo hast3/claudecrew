@@ -244,7 +244,7 @@
 <body>
 <header>
   <span id="conn" title="Disconnected"></span>
-  <h1>Claude Crew</h1>
+  <h1>Claude Crew <small id="ver" style="font-size:11px;font-weight:400;color:var(--muted)"></small></h1>
   <button class="hbtn" id="usageBtn" title="Plan usage">
     <span class="meter"><span class="lbl"><span>5h</span><span id="u5">–</span></span><span class="bar" id="b5"><i></i></span></span>
     <span class="meter"><span class="lbl"><span>Week</span><span id="uw">–</span></span><span class="bar" id="bw"><i></i></span></span>
@@ -918,6 +918,7 @@
   async function checkUpdate() {
     try {
       const u = await (await fetch('/api/update')).json();
+      $('#ver').textContent = 'v' + u.current;
       const b = $('#updBtn');
       b.hidden = !(u.available && u.canApply);
       b.textContent = `⬆ Update available (v${u.latest})`;
