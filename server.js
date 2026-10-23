@@ -13,6 +13,7 @@ const { createUsage } = require('./lib/usage');
 const changes = require('./lib/changes');
 const { createScheduler } = require('./lib/scheduler');
 const { createPush } = require('./lib/webpush');
+const { createUpdater } = require('./lib/update');
 
 const ROOT = __dirname;
 // Paths can be moved with environment variables; relative values resolve against this folder.
@@ -142,6 +143,11 @@ const push = createPush({
   subsFile: path.join(DATA_DIR, 'push-subscriptions.json'),
   // Contact URL the push services see; never an email address.
   subject: settings.cloudflare ? `https://${settings.cloudflare.hostname}` : 'https://localhost',
+});
+const updater = createUpdater({
+  root: ROOT, dataDir: DATA_DIR, repo: 'hast3/claudecrew',
+  supervised: process.env.CREW_SUPERVISED === '1', // run-crew.cmd restarts us after an exit
+  log: (m) => console.log(m),
 });
 const scheduler = createScheduler({
   file: path.join(DATA_DIR, 'schedules.json'),
@@ -1046,6 +1052,9 @@ function makeHandler(entrance) {
         }
         return;
       }
+      if (req.method === 'GET' && url.pathname === '/api/update') {
+        return send(res, 200, { ...updater.status(), canApply: !viaCloudflare && isLocal(req) });
+      }
       if (req.method === 'GET' && url.pathname === '/api/state') {
         const live = new Set(history.map((m) => m.id));
         return send(res, 200, {
@@ -1122,6 +1131,22 @@ function makeHandler(entrance) {
           post({ from: 'user', text: text || '(attachment)', to, attachments: shown.length ? shown : undefined });
           for (const id of to) enqueue(id, { fromId: 'user', text: text || 'Please look at the attached file(s).', hop: 0, attachments });
           return send(res, 200, { ok: true, to });
+        }
+        // Update to the latest release. This PC only, like restart.
+        if (url.pathname === '/api/update/apply') {
+          if (viaCloudflare || !isLocal(req)) return send(res, 403, { error: 'Updating is only allowed from the PC Crew runs on.' });
+          try {
+            const r = await updater.apply();
+            send(res, 200, r);
+            if (r.restarting) {
+              console.log('Restarting to finish the update');
+              for (const a of agents) stopAgent(a.id);
+              setTimeout(() => process.exit(0), 1500);
+            }
+          } catch (err) {
+            send(res, 200, { ok: false, error: err.message });
+          }
+          return;
         }
         // Used by the tray icon. This PC only: never over the tunnel or from other devices.
         if (url.pathname === '/api/restart' && !viaCloudflare && isLocal(req)) {
@@ -1252,6 +1277,7 @@ function listen(server, port, host, what) {
   }
 
   scheduler.start();
+  updater.start();
   console.log(`\n  Claude Crew is running: ${local}`);
   console.log(`  Claude Code: ${CLAUDE}`);
   for (const a of agents) console.log(`  ${a.missing ? '!!' : '  '} @${a.id.padEnd(12)} ${a.cwd}${a.missing ? '  (folder not found)' : ''}`);

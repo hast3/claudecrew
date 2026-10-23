@@ -2,6 +2,8 @@
 rem Runs Crew in the background (used by the "Claude Crew" scheduled task).
 rem Output goes to data\crew.log. If Crew ever exits, it restarts after 10 seconds.
 cd /d "%~dp0"
+rem Tells Crew this script restarts it, so an in-app update can restart itself.
+set CREW_SUPERVISED=1
 if not exist data mkdir data
 rem Node: NODE_EXE if set, else the first node.exe on PATH, else the default install folder.
 if not defined NODE_EXE for /f "delims=" %%N in ('where node 2^>nul') do if not defined NODE_EXE set "NODE_EXE=%%N"

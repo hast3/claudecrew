@@ -48,6 +48,10 @@ Open <http://localhost:7777>. On Windows you can double-click **Start Crew.bat**
 
 `server.js` is a small Node HTTP server with no dependencies. For each agent turn it spawns the `claude` CLI in that agent's `cwd`, adds a generated system prompt (who the agent is, its teammates, how handoffs work), resumes the agent's saved session and streams the JSON output back. The browser gets live updates over Server-Sent Events. The page is one file (`public/index.html`) with a service worker for push. State lives in `data/` (chat log, session IDs, usage, schedules, uploads, push keys). Small modules in `lib/` handle usage tracking (`usage.js`), git snapshots and undo (`changes.js`), scheduling (`scheduler.js`), Web Push (`webpush.js`) and icons (`icons.js`).
 
+## Updating
+
+When a newer release is published, a **⬆ Update available (vX)** button appears in the page header (on the PC Crew runs on). Click it and confirm. A git clone is fast-forwarded to the release; a zip install gets the new files copied over it. Your `crew.config.json`, `data/` and `workspace/` are never touched. Crew then restarts itself if it was started by the tray icon or `run-crew.cmd`; otherwise it tells you to restart it. Prefer the terminal? In a clone, `git pull --ff-only`. See [CHANGELOG.md](CHANGELOG.md) for what changed.
+
 ## Configuration
 
 All settings live in `crew.config.json`, which is git-ignored (start from `crew.config.example.json`). Environment variables override the file:

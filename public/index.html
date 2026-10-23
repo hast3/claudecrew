@@ -68,6 +68,7 @@
     padding: 4px 10px; font-size: 13px; color: var(--muted); white-space: nowrap;
   }
   .hbtn.on { color: var(--text); border-color: var(--accent); }
+  .hbtn[hidden] { display: none; }
 
   /* usage meter chip */
   #usageBtn { display: flex; align-items: center; gap: 10px; padding: 4px 10px; }
@@ -249,6 +250,7 @@
     <span class="meter"><span class="lbl"><span>Week</span><span id="uw">–</span></span><span class="bar" id="bw"><i></i></span></span>
   </button>
   <span class="spacer"></span>
+  <button class="hbtn on" id="updBtn" hidden></button>
   <button class="hbtn" id="schedBtn" title="Scheduled jobs">⏰<span class="wide"> Schedules</span></button>
   <button class="hbtn" id="actBtn" title="Show what agents are doing step by step">⚙<span class="wide"> Activity</span></button>
   <button class="hbtn" id="notifyBtn" title="Notifications">🔔</button>
@@ -911,6 +913,33 @@
   const scroller = $('#scroller');
   setActivity(store.get('crew-activity') === '1');
   connect();
+
+  // ---------- update notice ----------
+  async function checkUpdate() {
+    try {
+      const u = await (await fetch('/api/update')).json();
+      const b = $('#updBtn');
+      b.hidden = !(u.available && u.canApply);
+      b.textContent = `⬆ Update available (v${u.latest})`;
+      b.title = `You have v${u.current}. Click to update to v${u.latest}.`;
+    } catch { /* offline: no notice */ }
+  }
+  $('#updBtn').onclick = async () => {
+    const b = $('#updBtn');
+    if (!confirm('Update Claude Crew now? Your config, chats and workspace folders are kept. Running agents are stopped.')) return;
+    b.disabled = true; b.textContent = 'Updating…';
+    const r = await api('/api/update/apply');
+    if (!r.ok) { b.disabled = false; checkUpdate(); if (!r.error) alert('Update failed.'); else if (r.error) alert(`Update failed: ${r.error}`); return; }
+    if (!r.restarting) { b.hidden = true; alert(`Updated to v${r.version}. Restart Crew to use it: press Ctrl+C in the terminal and run npm start again, or use the tray icon's Restart Crew.`); return; }
+    b.textContent = 'Restarting…';
+    for (let i = 0; i < 40; i++) { // wait for the server to come back
+      await new Promise((ok) => setTimeout(ok, 1500));
+      try { if ((await fetch('/api/update')).ok) return location.reload(); } catch { /* still down */ }
+    }
+    alert('Updated. Crew did not come back by itself; restart it.');
+  };
+  checkUpdate();
+  setInterval(checkUpdate, 30 * 60 * 1000);
 })();
 </script>
 </body>

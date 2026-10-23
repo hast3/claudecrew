@@ -328,6 +328,18 @@ WantedBy=default.target
 
 Then run `systemctl --user enable --now claude-crew`, and `loginctl enable-linger $USER` to start it before login. Make sure `claude` is on that service's `PATH`, or set `CLAUDE_PATH`.
 
+## Updating
+
+Crew checks GitHub for a newer release when it starts and every 6 hours. It needs internet access and says nothing if it can't connect.
+
+1. When one exists, a **⬆ Update available (vX)** button appears at the top of the page. It only shows when you open Crew on the PC it runs on, not from a phone.
+2. Click it and confirm. *You should see:* the button change to "Updating…", then (if Crew was started with Start Crew.bat, the tray icon or autostart) "Restarting…" and the page reloading by itself. If you started Crew with `npm start`, you'll get a message saying it's updated: press Ctrl+C in the terminal and run `npm start` again.
+3. Your `crew.config.json`, `data/`, `workspace/` and `.env` files are never changed.
+
+How it updates: if the folder is a git clone, Crew fetches and fast-forwards to the release (and runs `npm install` only if dependencies changed). If you got a zip, Crew downloads the release zip and copies the files over yours. Zip installs need `tar` or `unzip` (both come with Windows 10+ and macOS).
+
+If you edited the code yourself, a git update can refuse with a message about local changes. Commit or stash them first. Manual alternative for a clone: `git pull --ff-only`, then restart. For a zip, download the new zip, extract it over the old folder and keep your `crew.config.json` and `data/`.
+
 ## Windows-only pieces
 
 | Piece | Windows | macOS / Linux |
