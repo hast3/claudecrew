@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+- Machines: new "Connect this PC to a hub" box in the panel. Enter the hub address and the pairing code, no config editing or restart. Problems (expired code, unreachable hub, Cloudflare blocking) are explained in plain words.
+- Remote pairing now recommends a single Cloudflare Bypass rule for `api/presence/*` instead of a service token (the token still works).
+- New endpoints `/api/machines/link`, `/connect` and `/disconnect`.
+
 ## 0.3.0
 - Machines: new panel (🖥) showing which computers run Crew and whether they are online. Other installs pair once with a short code and send a heartbeat every 30 s. Remote machines can reach the hub through Cloudflare Access with a service token. See docs/MACHINES.md.
 - New settings `machineName` and `presenceHub`; new endpoints under `/api/machines` and `/api/presence`.

@@ -17,49 +17,33 @@ Nothing to configure. Restart Crew and the Machines button appears. Optionally s
 
 For other computers on your home network to reach the hub, set `"allowLan": true` (see the main README).
 
-## 2. Pair another computer
+## 2. Connect another computer (about a minute)
 
 1. On the hub, open **Machines → Get pairing code**. The code works once and expires after 10 minutes. Five wrong guesses lock pairing for 10 minutes.
-2. On the other computer, add this under `settings` in its `crew.config.json`, then restart Crew:
+2. On the other computer, open **Machines**. In **Connect this PC to a hub**, type the hub's address (for example `192.168.1.20:7777` or `crew.example.com`) and the code, then press **Connect**.
 
-```json
-"machineName": "Laptop",
-"presenceHub": { "url": "http://HUB-PC-ADDRESS:7777", "pairCode": "THE-CODE" }
-```
+No config editing and no restart. If something is wrong, the box says what in plain words (wrong or expired code, can't reach the address, blocked by Cloudflare). **Disconnect** undoes it. Remove a machine from the hub with **Remove** and it stops being accepted.
 
-3. It pairs itself and stores its own secret in `data/presence-client.json`. You can delete `pairCode` from the config afterwards. Remove a machine any time with **Remove** in the panel, and it stops being accepted.
-
-The hub stores only a hash of each machine's secret (`data/presence.json`).
+The hub stores only a hash of each machine's secret (`data/presence.json`). The other machine keeps its own secret in `data/presence-client.json`. You can set its display name with `"machineName"` in `crew.config.json`.
 
 ## 3. Reaching the hub from outside your home (optional)
 
-Use this only if you want machines to report from anywhere. It needs the Cloudflare setup from the main README ("Internet access") already working, so the hub is at something like `https://crew.example.com`. Do not open router ports or share the local address on the internet.
+Use this only if machines should report from anywhere. It needs the Cloudflare setup from the main README ("Internet access") already working, so the hub is at something like `https://crew.example.com`. Do not open router ports.
 
-A machine is not a person, so it can't sign in with email. Cloudflare Access lets it through with a **service token**.
+Machines are not people, so they can't sign in with email. The simplest fix is one extra Cloudflare Access application that lets only the two check-in calls through. They are protected by the one-time code and each machine's own secret.
 
-1. Cloudflare dashboard → **Zero Trust** → **Access** → **Service credentials** (older UI: *Access → Service Auth*) → **Create Service Token**. Name it, e.g. `crew-machines`, and pick a long duration. **Copy the Client ID and Client Secret now.** The secret is shown once.
-2. Zero Trust → **Access** → **Applications** → open your Crew application → **Policies** → **Add a policy**:
-   - Name: `Crew machines`
-   - Action: **Service Auth**
-   - Include: **Service Token** → `crew-machines`
-   - Save. Keep your existing email policy as it is.
-3. On each remote computer, extend `presenceHub` in `crew.config.json`:
+1. Cloudflare dashboard → **Zero Trust** → **Access** → **Applications** → **Add an application** → **Self-hosted**.
+2. Hostname `crew.example.com`, path `api/presence/*`.
+3. Add a policy: Action **Bypass**, Include **Everyone**. Save.
 
-```json
-"presenceHub": {
-  "url": "https://crew.example.com",
-  "pairCode": "THE-CODE",
-  "cfClientId": "xxxx.access",
-  "cfClientSecret": "xxxx"
-}
-```
+Your main Crew application and its email login are unchanged, and everything else still needs your login. Cloudflare applies the most specific path first.
 
-4. Restart Crew there. The service token only gets a machine past Cloudflare, and the hub accepts it for the two presence endpoints (`/api/presence/pair` and `/api/presence/beat`) and nothing else. Everything else in Crew still needs your email login. Each machine also still needs its own pairing secret.
+Then use **Connect this PC to a hub** with `crew.example.com` as the address.
 
-Treat the Client Secret like a password. If it leaks, delete the token in Cloudflare and make a new one.
+**Stricter option (service token):** instead of Bypass, create a Service Token (Access → Service credentials), then add a policy with Action **Service Auth** (not Allow) and Include **Service Token**, attached to an application for `api/presence/*`. Add `cfClientId` and `cfClientSecret` under `presenceHub` in the machine's `crew.config.json`. Treat the secret like a password, and don't paste it into chat. If it leaks, delete the token and make a new one.
 
 ## How it works (for contributors)
 
-- `lib/presence.js`: hub store, pairing, heartbeat check, and the client sender.
-- `server.js`: `POST /api/presence/pair` and `/beat` (machine secret, no browser login), `GET /api/machines`, `POST /api/machines/pair` and `/remove` (signed-in users only).
+- `lib/presence.js`: hub store, pairing, heartbeat check, the client sender, and `pairOnce` (one-shot pairing with plain-language errors).
+- `server.js`: `POST /api/presence/pair` and `/beat` (machine secret, no browser login), `GET /api/machines` and `/api/machines/link`, `POST /api/machines/pair`, `/connect`, `/disconnect` and `/remove` (this computer only, or signed-in users).
 - `public/index.html`: the Machines panel.

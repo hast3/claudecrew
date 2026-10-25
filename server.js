@@ -14,7 +14,7 @@ const changes = require('./lib/changes');
 const { createScheduler } = require('./lib/scheduler');
 const { createPush } = require('./lib/webpush');
 const { createUpdater } = require('./lib/update');
-const { createPresence, startClient } = require('./lib/presence');
+const { createPresence, startClient, pairOnce } = require('./lib/presence');
 
 const ROOT = __dirname;
 // Paths can be moved with environment variables; relative values resolve against this folder.
@@ -153,6 +153,23 @@ const updater = createUpdater({
 const VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version; } catch { return '0.0.0'; } })();
 const rawCfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')).settings || {};
 const presence = createPresence({ file: path.join(DATA_DIR, 'presence.json'), selfId: 'hub', selfName: rawCfg.machineName || os.hostname(), version: VERSION });
+const presenceClientFile = path.join(DATA_DIR, 'presence-client.json');
+let presenceTimer = null;
+function startPresenceClient(hub) {
+  clearInterval(presenceTimer);
+  presenceTimer = startClient({
+    hubUrl: hub.url, pairCode: hub.pairCode, cfClientId: hub.cfClientId, cfClientSecret: hub.cfClientSecret, file: presenceClientFile,
+    name: rawCfg.machineName || os.hostname(), version: VERSION,
+    activity: () => (busyCount() ? `${busyCount()} agent${busyCount() > 1 ? 's' : ''} working` : 'idle'), log: console.log,
+  });
+}
+function savePresenceHub(hub) {
+  const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+  raw.settings = raw.settings || {};
+  if (hub) raw.settings.presenceHub = hub; else delete raw.settings.presenceHub;
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(raw, null, 2));
+  rawCfg.presenceHub = hub || undefined;
+}
 const busyCount = () => agents.filter((a) => runtime[a.id].status === 'working').length;
 const scheduler = createScheduler({
   file: path.join(DATA_DIR, 'schedules.json'),
@@ -1092,6 +1109,7 @@ function makeHandler(entrance) {
           signOutUrl: viaCloudflare ? '/cdn-cgi/access/logout' : null,
         });
       }
+      if (req.method === 'GET' && url.pathname === '/api/machines/link') return send(res, 200, { url: rawCfg.presenceHub?.url || '' });
       if (req.method === 'GET' && url.pathname === '/api/machines') {
         presence.setActivity(busyCount() ? `${busyCount()} agent${busyCount() > 1 ? 's' : ''} working` : 'idle');
         return send(res, 200, presence.list());
@@ -1262,6 +1280,23 @@ function makeHandler(entrance) {
 
         // ---- phone notifications
         if (url.pathname === '/api/machines/pair') return send(res, 200, presence.newPairCode());
+        if (url.pathname === '/api/machines/connect') {
+          try {
+            const hubUrl = await pairOnce({ hubUrl: body.url, pairCode: body.code, cfClientId: body.cfClientId, cfClientSecret: body.cfClientSecret,
+              file: presenceClientFile, name: rawCfg.machineName || os.hostname(), version: VERSION, activity: () => 'idle' });
+            const hub = { url: hubUrl };
+            if (body.cfClientId && body.cfClientSecret) { hub.cfClientId = body.cfClientId; hub.cfClientSecret = body.cfClientSecret; }
+            savePresenceHub(hub);
+            startPresenceClient(hub);
+            return send(res, 200, { ok: true, url: hubUrl });
+          } catch (e) { return send(res, 400, { error: e.message }); }
+        }
+        if (url.pathname === '/api/machines/disconnect') {
+          clearInterval(presenceTimer);
+          try { fs.unlinkSync(presenceClientFile); } catch { /* not paired */ }
+          savePresenceHub(null);
+          return send(res, 200, { ok: true });
+        }
         if (url.pathname === '/api/machines/remove') { presence.remove(String(body.id || '')); return send(res, 200, { ok: true }); }
         if (url.pathname === '/api/push/subscribe') {
           try { push.subscribe(body.subscription || {}, body.label); } catch (e) { return send(res, 400, { error: e.message }); }
@@ -1306,14 +1341,7 @@ function listen(server, port, host, what) {
 
   scheduler.start();
   updater.start();
-  if (rawCfg.presenceHub?.url) {
-    startClient({
-      hubUrl: rawCfg.presenceHub.url, pairCode: rawCfg.presenceHub.pairCode,
-      cfClientId: rawCfg.presenceHub.cfClientId, cfClientSecret: rawCfg.presenceHub.cfClientSecret, file: path.join(DATA_DIR, 'presence-client.json'),
-      name: rawCfg.machineName || os.hostname(), version: VERSION,
-      activity: () => (busyCount() ? `${busyCount()} agent${busyCount() > 1 ? 's' : ''} working` : 'idle'), log: console.log,
-    });
-  }
+  if (rawCfg.presenceHub?.url) startPresenceClient(rawCfg.presenceHub);
   console.log(`\n  Claude Crew is running: ${local}`);
   console.log(`  Claude Code: ${CLAUDE}`);
   for (const a of agents) console.log(`  ${a.missing ? '!!' : '  '} @${a.id.padEnd(12)} ${a.cwd}${a.missing ? '  (folder not found)' : ''}`);

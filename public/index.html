@@ -724,17 +724,31 @@
     const r = await fetch('/api/machines');
     if (!r.ok) return;
     const list = await r.json();
+    const link = await fetch('/api/machines/link').then((x) => x.json()).catch(() => ({}));
     const rows = list.map((m) => `<div class="job" data-id="${esc(m.id)}">
         <div class="row"><b><span style="color:${m.online ? '#4caf50' : '#888'}">●</span> ${esc(m.name)}${m.hub ? ' <span class="small">(hub)</span>' : ''}</b>
           <span class="small grow">${m.online ? esc(m.activity || 'online') : 'offline · last seen ' + when(m.lastSeen)}</span>
           ${m.hub ? '' : '<button class="btn" data-del>Remove</button>'}</div>
         <div class="small">${esc(m.os || '')}${m.version ? ' · Crew ' + esc(m.version) : ''}</div></div>`).join('');
     $('#machBody').innerHTML = rows + `<div class="job"><div class="row"><b>Add a machine</b><span class="grow"></span><button class="btn primary" id="machPair">Get pairing code</button></div>
-        <div class="small" id="machCode">On the other computer, put <code>"presenceHub": {"url": "http://THIS-PC:7777", "pairCode": "CODE"}</code> in the settings of its crew.config.json and restart Crew. Codes last 10 minutes and work once.</div></div>`;
+        <div class="small" id="machCode">Press the button, then enter the code in the "Connect to a hub" box on the other computer's Crew. Codes last 10 minutes and work once.</div></div>
+      <div class="job"><div class="row"><b>Connect this PC to a hub</b></div>
+        ${link.url ? `<div class="row"><span class="small grow">Connected to ${esc(link.url)}</span><button class="btn" id="machLeave">Disconnect</button></div>`
+          : `<div class="small">On the hub's Machines panel press "Get pairing code", then enter its address and the code here.</div>
+        <div class="row"><input id="machUrl" class="grow" placeholder="Hub address, e.g. crew.example.com" autocomplete="off">
+          <input id="machIn" size="10" placeholder="Code" autocomplete="off" style="text-transform:uppercase">
+          <button class="btn primary" id="machGo">Connect</button></div>
+        <div class="small" id="machMsg"></div>`}</div>`;
     $('#machPair').onclick = async () => {
       const j = await api('/api/machines/pair');
       if (j.code) $('#machCode').innerHTML = `Pairing code: <b style="font-size:20px;letter-spacing:2px">${esc(j.code)}</b> (10 minutes, one use)`;
     };
+    if ($('#machGo')) $('#machGo').onclick = async () => {
+      $('#machMsg').textContent = 'Connecting…';
+      const j = await api('/api/machines/connect', { url: $('#machUrl').value, code: $('#machIn').value });
+      if (j.ok) renderMachines(); else $('#machMsg').textContent = '';
+    };
+    if ($('#machLeave')) $('#machLeave').onclick = async () => { if (confirm('Disconnect from the hub?')) { await api('/api/machines/disconnect'); renderMachines(); } };
     $('#machBody').querySelectorAll('[data-del]').forEach((b) => {
       b.onclick = async () => { if (confirm('Remove this machine?')) { await api('/api/machines/remove', { id: b.closest('.job').dataset.id }); renderMachines(); } };
     });
@@ -742,7 +756,7 @@
   $('#machBtn').onclick = () => {
     renderMachines(); open('#machDlg');
     clearInterval(machTimer);
-    machTimer = setInterval(() => { if ($('#machDlg').open && !$('#machCode').querySelector('b')) renderMachines(); else if (!$('#machDlg').open) clearInterval(machTimer); }, 15000);
+    machTimer = setInterval(() => { if ($('#machDlg').open && !$('#machCode').querySelector('b') && !$('#machDlg').contains(document.activeElement.closest('input') || null)) renderMachines(); else if (!$('#machDlg').open) clearInterval(machTimer); }, 15000);
   };
 
   // ---------- schedules ----------

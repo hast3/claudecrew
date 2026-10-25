@@ -67,7 +67,7 @@ All settings live in `crew.config.json`, which is git-ignored (start from `crew.
 | `NODE_EXE` | Node used by `run-crew.cmd` (Windows) | found on `PATH` |
 
 Relative paths are resolved from the Crew folder.
-nTwo optional settings, `machineName` and `presenceHub`, name this computer and pair it to a hub. See [docs/MACHINES.md](docs/MACHINES.md).
+Name this computer with the optional `machineName` setting, and connect it to a hub from the Machines panel (no config editing). See [docs/MACHINES.md](docs/MACHINES.md).
 
 ## Privacy
 
