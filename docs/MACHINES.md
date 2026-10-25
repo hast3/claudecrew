@@ -17,12 +17,21 @@ Nothing to configure. Restart Crew and the Machines button appears. Optionally s
 
 For other computers on your home network to reach the hub, set `"allowLan": true` (see the main README).
 
-## 2. Connect another computer (about a minute)
+## 2. Add another computer (about a minute)
 
-1. On the hub, open **Machines → Get pairing code**. The code works once and expires after 10 minutes. Five wrong guesses lock pairing for 10 minutes.
-2. On the other computer, open **Machines**. In **Connect this PC to a hub**, type the hub's address (for example `192.168.1.20:7777` or `crew.example.com`) and the code, then press **Connect**.
+**New PC, Crew not installed yet (Windows):**
 
-No config editing and no restart. If something is wrong, the box says what in plain words (wrong or expired code, can't reach the address, blocked by Cloudflare). **Disconnect** undoes it. Remove a machine from the hub with **Remove** and it stops being accepted.
+1. On the hub, open **Machines → Get pairing code**. It shows a one-line command with the hub's address and a one-time code already in it. Press **Copy**.
+2. Paste it into PowerShell on the new PC. That installs Crew (see [SETUP.md](SETUP.md)), starts it, and joins this hub.
+
+**Crew already installed on the other PC:**
+
+1. On the hub, **Machines → Get pairing code**.
+2. On the other PC, open **Machines → Connect this PC to a hub**, type the hub's address (for example `192.168.1.20:7777` or `crew.example.com`) and the code, then press **Connect**.
+
+The code works once and expires after 10 minutes. Five wrong guesses lock pairing for 10 minutes. No config editing and no restart. If something is wrong, the message says what in plain words (wrong or expired code, can't reach the address, blocked by Cloudflare). **Disconnect** undoes it. **Remove** on the hub makes it stop accepting that machine.
+
+The hub shows the one-line command when it knows an address other PCs can use: its Cloudflare name, or its LAN address when `"allowLan": true`.
 
 The hub stores only a hash of each machine's secret (`data/presence.json`). The other machine keeps its own secret in `data/presence-client.json`. You can set its display name with `"machineName"` in `crew.config.json`.
 
@@ -45,5 +54,6 @@ Then use **Connect this PC to a hub** with `crew.example.com` as the address.
 ## How it works (for contributors)
 
 - `lib/presence.js`: hub store, pairing, heartbeat check, the client sender, and `pairOnce` (one-shot pairing with plain-language errors).
+- `install.ps1`: the Windows one-command installer/updater (Node, Claude Code, files, config, start, join hub, autostart).
 - `server.js`: `POST /api/presence/pair` and `/beat` (machine secret, no browser login), `GET /api/machines` and `/api/machines/link`, `POST /api/machines/pair`, `/connect`, `/disconnect` and `/remove` (this computer only, or signed-in users).
 - `public/index.html`: the Machines panel.

@@ -1,23 +1,51 @@
 # Setting up Claude Crew
 
-This guide covers Windows first, since that is where Crew is developed and tested. Notes for macOS and Linux follow each step, and [Windows-only pieces](#windows-only-pieces) lists exactly what would need changes.
+## What do I run, and when?
 
-**Never used Claude Code before?** Start with the next section. It assumes nothing. If you already have Node.js, Git and a working `claude` command, skip to [step 2](#2-get-the-code).
+| Your situation | Run this | Where |
+| --- | --- | --- |
+| **Windows, first time** (this is the normal case) | `irm https://raw.githubusercontent.com/hast3/claudecrew/main/install.ps1 \| iex` | PowerShell, any folder |
+| **Adding another PC to a Crew you already run** | Hub's **Machines → Get pairing code**, then paste the one line it shows | PowerShell on the new PC |
+| **Updating** | Click **⬆ Update available** in Crew. Or run the first-time command again: it updates and never touches your settings | Crew page, or PowerShell |
+| **Mac, Linux, or you prefer to do it by hand** | [Manual install](#manual-install-mac-linux-or-by-hand) below | Terminal |
 
-## Quick checklist (one page)
+### What the Windows command does
 
-Tick these off in order. Each line says what you should see. Details for every line are further down.
+It checks each item and only does what is missing, so it is safe to run twice:
+
+1. Installs **Node.js** (LTS) if you don't have version 20+.
+2. Installs **Claude Code** if `claude` isn't found.
+3. Downloads the latest Crew into **`C:Crew`** (add `-Dir D:somewhere` to choose another folder).
+4. Creates `crew.config.json` with your Windows name and this PC's name. An existing config is never changed.
+5. Starts Crew and opens it in your browser.
+6. Joins your hub, only if you pasted the line from the hub (it contains `-Hub` and `-Code`).
+7. Turns on **autostart** (Windows asks for administrator approval once). Skip it with `-NoAutostart`.
+
+**The one thing it can't do for you:** sign in to Claude Code. Type `claude` in a terminal once and follow the login. Crew uses that login.
+
+If a step fails it stops and says what to do. Fix that, then run the same command again.
+
+### Adding another PC, step by step
+
+1. On the **hub** (the PC that is always on): open Crew → **🖥 Machines → Get pairing code**.
+2. It shows a one-line command with the hub's address and a one-time code already filled in. Press **Copy**.
+3. On the **new PC**: open PowerShell, paste, press Enter. Within a couple of minutes the new PC shows as online in the hub's Machines panel.
+4. Sign in to Claude Code on the new PC (`claude`, once).
+
+The hub only shows a one-line command if the new PC can reach it: turn on `"allowLan": true` for the same network, or set up Cloudflare for anywhere ([MACHINES.md](MACHINES.md)). The code works once and expires after 10 minutes. If it expires, press the button again.
+
+### Manual install (Mac, Linux, or by hand)
+
+The rest of this guide. Quick version:
 
 1. `node --version` prints `v20` or higher. (Not installed? [Step C](#step-c-install-nodejs-and-git).)
 2. `claude -p "Reply with exactly: Claude Code is working"` prints that sentence. (Not working? [Step D and E](#step-d-install-the-claude-code-command).)
-3. Get the code: `git clone https://github.com/hast3/claudecrew claudecrew`, then `cd claudecrew`. You should be in a folder containing `server.js`.
-4. Copy the config. Mac/Linux: `cp crew.config.example.json crew.config.json`. Windows cmd: `copy crew.config.example.json crew.config.json`. Windows PowerShell accepts either.
-5. Open `crew.config.json` in any text editor. Change `"userName": "You"` to your name. Save. Leave the rest alone for a first run.
-6. Start: `npm start`. The terminal lists your agents and a line like `http://localhost:7777`, and your browser opens. If it doesn't, open <http://localhost:7777> yourself. Leave the terminal window open; closing it stops Crew.
-7. In the page, type `hello` and press Enter. A reply from **Assistant** appears within about a minute.
-8. To add or change an agent, edit `crew.config.json`, save, press Ctrl+C in the terminal, and run `npm start` again. There is no editor inside the page. See [Define your agents](#4-define-your-agents).
+3. `git clone https://github.com/hast3/claudecrew claudecrew`, then `cd claudecrew`.
+4. Copy the config: `cp crew.config.example.json crew.config.json` (Windows cmd: `copy`). Set `"userName"` to your name.
+5. `npm start`. Your browser opens at <http://localhost:7777>. Type `hello`.
+6. To add or change agents, edit `crew.config.json`, restart Crew. See [Define your agents](#4-define-your-agents).
 
-Stuck? Go to [What actually goes wrong](#what-actually-goes-wrong).
+Stuck? See [What actually goes wrong](#what-actually-goes-wrong).
 
 ---
 
@@ -298,7 +326,7 @@ Crew has **no built-in TLS**. For HTTPS, put something in front of it:
 
 ## 8. Optional: start automatically
 
-**Windows.** In an **Administrator** PowerShell, in the Crew folder:
+**Windows.** The install command above already does this. To do it by hand, in an **Administrator** PowerShell, in the Crew folder:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File install-autostart.ps1              # install

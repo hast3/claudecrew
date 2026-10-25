@@ -1279,7 +1279,13 @@ function makeHandler(entrance) {
         }
 
         // ---- phone notifications
-        if (url.pathname === '/api/machines/pair') return send(res, 200, presence.newPairCode());
+        if (url.pathname === '/api/machines/pair') {
+          const p = presence.newPairCode();
+          // Address another PC should use to reach this hub: the Cloudflare name if set up, else this PC on the LAN.
+          const hub = cf ? cf.hostname : settings.allowLan && lanAddresses()[0] ? lanAddresses()[0] + ':' + settings.port : '';
+          const line = hub ? 'powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/hast3/claudecrew/main/install.ps1))) -Hub ' + hub + ' -Code ' + p.code + '"' : '';
+          return send(res, 200, { ...p, hub, line });
+        }
         if (url.pathname === '/api/machines/connect') {
           try {
             const hubUrl = await pairOnce({ hubUrl: body.url, pairCode: body.code, cfClientId: body.cfClientId, cfClientSecret: body.cfClientSecret,

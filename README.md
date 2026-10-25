@@ -29,21 +29,17 @@ Crew drives the `claude` command you already have, so it runs on your Claude sub
 
 ## Quick start
 
-New to Claude Code, Node.js or the terminal? Follow the beginner walkthrough first: [Start here: never used Claude Code](docs/SETUP.md#start-here-never-used-claude-code). It covers signing up, installing everything, logging in and a test that proves it works, with what you should see at each step.
+**Windows.** Paste this into PowerShell. It installs what is missing (Node.js, Claude Code), downloads Crew to `C:Crew`, starts it, and turns on autostart:
 
-Already set up:
-
-```sh
-git clone https://github.com/hast3/claudecrew claudecrew
-cd claudecrew
-cp crew.config.example.json crew.config.json     # Windows: copy crew.config.example.json crew.config.json
-# edit crew.config.json: set "userName" to your name (agent folders are created for you)
-npm start                                         # or: node server.js --open
+```powershell
+irm https://raw.githubusercontent.com/hast3/claudecrew/main/install.ps1 | iex
 ```
 
-Open <http://localhost:7777>. On Windows you can double-click **Start Crew.bat** instead.
+Then type `claude` once in a terminal to sign in. Run the same line again any time to update.
 
-[docs/SETUP.md](docs/SETUP.md) covers phone access, HTTPS, push notifications, autostart and troubleshooting.
+**Another PC for the same crew?** On the hub open **🖥 Machines → Get pairing code**. It shows a one-line command with the code filled in. Paste it into PowerShell on the new PC.
+
+**Mac, Linux or by hand:** `git clone https://github.com/hast3/claudecrew`, copy `crew.config.example.json` to `crew.config.json`, then `npm start`. New to Claude Code or the terminal? [docs/SETUP.md](docs/SETUP.md) walks through everything, including a table of what to run and when.
 
 ## How it works
 

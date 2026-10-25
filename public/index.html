@@ -741,7 +741,10 @@
         <div class="small" id="machMsg"></div>`}</div>`;
     $('#machPair').onclick = async () => {
       const j = await api('/api/machines/pair');
-      if (j.code) $('#machCode').innerHTML = `Pairing code: <b style="font-size:20px;letter-spacing:2px">${esc(j.code)}</b> (10 minutes, one use)`;
+      if (j.code) $('#machCode').innerHTML = `Pairing code: <b style="font-size:20px;letter-spacing:2px">${esc(j.code)}</b> (10 minutes, one use)` + (j.line
+        ? `<div class="small" style="margin-top:6px"><b>New PC?</b> Open PowerShell on it, paste this one line, press Enter:</div><textarea readonly rows="3" style="width:100%" onclick="this.select()">${esc(j.line)}</textarea><button class="btn" id="machCopy">Copy</button>`
+        : '<div class="small">Already installed on the other PC? Enter ' + (j.hub ? esc(j.hub) : "this PC's address") + ' and the code in its Machines panel. For a brand new PC, turn on "allowLan" or Cloudflare so it can reach this one.</div>');
+      if ($('#machCopy')) $('#machCopy').onclick = () => { navigator.clipboard.writeText(j.line); $('#machCopy').textContent = 'Copied'; };
     };
     if ($('#machGo')) $('#machGo').onclick = async () => {
       $('#machMsg').textContent = 'Connecting…';
