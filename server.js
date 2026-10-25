@@ -14,6 +14,7 @@ const changes = require('./lib/changes');
 const { createScheduler } = require('./lib/scheduler');
 const { createPush } = require('./lib/webpush');
 const { createUpdater } = require('./lib/update');
+const { createPresence, startClient } = require('./lib/presence');
 
 const ROOT = __dirname;
 // Paths can be moved with environment variables; relative values resolve against this folder.
@@ -149,6 +150,10 @@ const updater = createUpdater({
   supervised: process.env.CREW_SUPERVISED === '1', // run-crew.cmd restarts us after an exit
   log: (m) => console.log(m),
 });
+const VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version; } catch { return '0.0.0'; } })();
+const rawCfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')).settings || {};
+const presence = createPresence({ file: path.join(DATA_DIR, 'presence.json'), selfId: 'hub', selfName: rawCfg.machineName || os.hostname(), version: VERSION });
+const busyCount = () => agents.filter((a) => runtime[a.id].status === 'working').length;
 const scheduler = createScheduler({
   file: path.join(DATA_DIR, 'schedules.json'),
   onDue(job) {
@@ -903,7 +908,7 @@ async function loadAccessKeys(force) {
   accessKeys.fetchedAt = Date.now();
 }
 
-async function verifyAccess(req) {
+async function verifyAccess(req, allowService = false) {
   const token = req.headers['cf-access-jwt-assertion'] || cookie(req, 'CF_Authorization');
   const parts = String(token || '').split('.');
   if (parts.length !== 3) return null;
@@ -927,6 +932,8 @@ async function verifyAccess(req) {
   if (!aud.includes(cf.aud)) return null;
   if (typeof claims.exp !== 'number' || claims.exp < now - 30) return null;
   if (typeof claims.nbf === 'number' && claims.nbf > now + 30) return null;
+  // A Cloudflare service token (a machine, not a person) has no email. Only presence endpoints accept one.
+  if (allowService && !claims.email && claims.common_name) return claims;
   if (!cf.allowedEmails.includes(String(claims.email || '').toLowerCase())) return null;
   return claims;
 }
@@ -1004,9 +1011,24 @@ function makeHandler(entrance) {
       const url = new URL(req.url, 'http://local');
       const wantsJson = url.pathname.startsWith('/api') || url.pathname === '/events';
 
+      // Machines pair and send heartbeats with their own secret, not the browser login.
+      if (req.method === 'POST' && url.pathname.startsWith('/api/presence/')) {
+        if (req.headers['x-crew'] !== '1') return send(res, 403, { error: 'missing header' });
+        const b = JSON.parse((await readBody(req, 8192)) || '{}');
+        if (url.pathname === '/api/presence/pair') {
+          try { return send(res, 200, presence.pair(b)); } catch (e) { return send(res, 403, { error: e.message }); }
+        }
+        if (url.pathname === '/api/presence/beat') {
+          try { presence.beat(b); } catch (e) { return send(res, 401, { error: e.message }); }
+          return send(res, 200, { ok: true });
+        }
+        return send(res, 404, { error: 'not found' });
+      }
+
       let identity = null;
       if (viaCloudflare) {
-        identity = await verifyAccess(req).catch((err) => { console.error(err.message); return null; });
+        const presencePath = req.method === 'POST' && /^\/api\/presence\/(pair|beat)$/.test(url.pathname);
+        identity = await verifyAccess(req, presencePath).catch((err) => { console.error(err.message); return null; });
         if (!identity) {
           return wantsJson
             ? send(res, 401, { error: 'login required' })
@@ -1069,6 +1091,10 @@ function makeHandler(entrance) {
           signedInAs: identity?.email || null,
           signOutUrl: viaCloudflare ? '/cdn-cgi/access/logout' : null,
         });
+      }
+      if (req.method === 'GET' && url.pathname === '/api/machines') {
+        presence.setActivity(busyCount() ? `${busyCount()} agent${busyCount() > 1 ? 's' : ''} working` : 'idle');
+        return send(res, 200, presence.list());
       }
       if (req.method === 'GET' && url.pathname === '/api/usage') {
         return send(res, 200, usage.summary(agents.map((a) => a.id)));
@@ -1235,6 +1261,8 @@ function makeHandler(entrance) {
         }
 
         // ---- phone notifications
+        if (url.pathname === '/api/machines/pair') return send(res, 200, presence.newPairCode());
+        if (url.pathname === '/api/machines/remove') { presence.remove(String(body.id || '')); return send(res, 200, { ok: true }); }
         if (url.pathname === '/api/push/subscribe') {
           try { push.subscribe(body.subscription || {}, body.label); } catch (e) { return send(res, 400, { error: e.message }); }
           return send(res, 200, { ok: true });
@@ -1278,6 +1306,14 @@ function listen(server, port, host, what) {
 
   scheduler.start();
   updater.start();
+  if (rawCfg.presenceHub?.url) {
+    startClient({
+      hubUrl: rawCfg.presenceHub.url, pairCode: rawCfg.presenceHub.pairCode,
+      cfClientId: rawCfg.presenceHub.cfClientId, cfClientSecret: rawCfg.presenceHub.cfClientSecret, file: path.join(DATA_DIR, 'presence-client.json'),
+      name: rawCfg.machineName || os.hostname(), version: VERSION,
+      activity: () => (busyCount() ? `${busyCount()} agent${busyCount() > 1 ? 's' : ''} working` : 'idle'), log: console.log,
+    });
+  }
   console.log(`\n  Claude Crew is running: ${local}`);
   console.log(`  Claude Code: ${CLAUDE}`);
   for (const a of agents) console.log(`  ${a.missing ? '!!' : '  '} @${a.id.padEnd(12)} ${a.cwd}${a.missing ? '  (folder not found)' : ''}`);

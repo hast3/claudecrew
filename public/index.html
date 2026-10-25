@@ -251,6 +251,7 @@
   </button>
   <span class="spacer"></span>
   <button class="hbtn on" id="updBtn" hidden></button>
+  <button class="hbtn" id="machBtn" title="Machines running Crew">🖥<span class="wide"> Machines</span></button>
   <button class="hbtn" id="schedBtn" title="Scheduled jobs">⏰<span class="wide"> Schedules</span></button>
   <button class="hbtn" id="actBtn" title="Show what agents are doing step by step">⚙<span class="wide"> Activity</span></button>
   <button class="hbtn" id="notifyBtn" title="Notifications">🔔</button>
@@ -274,6 +275,10 @@
 <dialog id="usageDlg">
   <div class="dlg-head"><h3>Plan usage</h3><button class="x" data-close>×</button></div>
   <div class="dlg-body" id="usageBody"></div>
+</dialog>
+<dialog id="machDlg">
+  <div class="dlg-head"><h3>Machines</h3><button class="x" data-close>×</button></div>
+  <div class="dlg-body" id="machBody"></div>
 </dialog>
 <dialog id="schedDlg">
   <div class="dlg-head"><h3>Scheduled jobs</h3><button class="x" data-close>×</button></div>
@@ -712,6 +717,33 @@
     });
     es.addEventListener('schedules', (e) => { schedules = JSON.parse(e.data); if ($('#schedDlg').open) renderSchedules(); });
   }
+
+  // ---------- machines ----------
+  let machTimer = null;
+  async function renderMachines() {
+    const r = await fetch('/api/machines');
+    if (!r.ok) return;
+    const list = await r.json();
+    const rows = list.map((m) => `<div class="job" data-id="${esc(m.id)}">
+        <div class="row"><b><span style="color:${m.online ? '#4caf50' : '#888'}">●</span> ${esc(m.name)}${m.hub ? ' <span class="small">(hub)</span>' : ''}</b>
+          <span class="small grow">${m.online ? esc(m.activity || 'online') : 'offline · last seen ' + when(m.lastSeen)}</span>
+          ${m.hub ? '' : '<button class="btn" data-del>Remove</button>'}</div>
+        <div class="small">${esc(m.os || '')}${m.version ? ' · Crew ' + esc(m.version) : ''}</div></div>`).join('');
+    $('#machBody').innerHTML = rows + `<div class="job"><div class="row"><b>Add a machine</b><span class="grow"></span><button class="btn primary" id="machPair">Get pairing code</button></div>
+        <div class="small" id="machCode">On the other computer, put <code>"presenceHub": {"url": "http://THIS-PC:7777", "pairCode": "CODE"}</code> in the settings of its crew.config.json and restart Crew. Codes last 10 minutes and work once.</div></div>`;
+    $('#machPair').onclick = async () => {
+      const j = await api('/api/machines/pair');
+      if (j.code) $('#machCode').innerHTML = `Pairing code: <b style="font-size:20px;letter-spacing:2px">${esc(j.code)}</b> (10 minutes, one use)`;
+    };
+    $('#machBody').querySelectorAll('[data-del]').forEach((b) => {
+      b.onclick = async () => { if (confirm('Remove this machine?')) { await api('/api/machines/remove', { id: b.closest('.job').dataset.id }); renderMachines(); } };
+    });
+  }
+  $('#machBtn').onclick = () => {
+    renderMachines(); open('#machDlg');
+    clearInterval(machTimer);
+    machTimer = setInterval(() => { if ($('#machDlg').open && !$('#machCode').querySelector('b')) renderMachines(); else if (!$('#machDlg').open) clearInterval(machTimer); }, 15000);
+  };
 
   // ---------- schedules ----------
   const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

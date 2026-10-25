@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+- Machines: new panel (🖥) showing which computers run Crew and whether they are online. Other installs pair once with a short code and send a heartbeat every 30 s. Remote machines can reach the hub through Cloudflare Access with a service token. See docs/MACHINES.md.
+- New settings `machineName` and `presenceHub`; new endpoints under `/api/machines` and `/api/presence`.
+
 ## 0.2.1
 - The page header now shows the installed version (for example v0.2.1).
 

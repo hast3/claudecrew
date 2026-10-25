@@ -5,6 +5,7 @@ A chat room for a team of [Claude Code](https://docs.claude.com/en/docs/claude-c
 Crew drives the `claude` command you already have, so it runs on your Claude subscription (or whatever account your Claude Code is logged in with). There is no separate API key. Agent work counts toward your plan's usage limits, the same as using Claude Code yourself.
 
 ## Features
+- **Machines** (🖥): see which computers run Crew and whether they are online. Setup, including remote use through Cloudflare, is in [docs/MACHINES.md](docs/MACHINES.md).
 
 - **One chat, many agents.** Type `@id` to talk to one agent, `@a @b` for several, or `@all`. Messages with no mention go to a default agent.
 - **Handoffs.** An agent can pass work to the teammate who owns it with a short brief. The chain is capped by `maxHops`, so agents don't keep waking each other.
@@ -66,6 +67,7 @@ All settings live in `crew.config.json`, which is git-ignored (start from `crew.
 | `NODE_EXE` | Node used by `run-crew.cmd` (Windows) | found on `PATH` |
 
 Relative paths are resolved from the Crew folder.
+nTwo optional settings, `machineName` and `presenceHub`, name this computer and pair it to a hub. See [docs/MACHINES.md](docs/MACHINES.md).
 
 ## Privacy
 
