@@ -18,6 +18,7 @@ Crew drives the `claude` command you already have, so it runs on your Claude sub
 - **Attachments.** Photos, screenshots, PDFs and text files, up to 15 MB each.
 - **Push notifications.** Uses Web Push (VAPID, built in, no third-party service). Works on phones too, over HTTPS.
 - **Installable web app (PWA)**, with voice dictation, a per-agent model choice, and light and dark themes.
+- **Groups and a notes pad**: put agents into collapsible groups, each with a 📝 to-do/done checklist. Reorder, pin, colour and re-icon agents from the crew bar.
 - **No dependencies.** One Node file and one HTML page. Nothing to `npm install`.
 
 ## Requirements

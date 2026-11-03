@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+- Groups: put agents into named containers (agent dialog > Group, or drag a card onto another). Groups collapse and show a status summary. Saved per browser.
+- Notes pad: each group has a 📝 checklist of open and done items, saved on the server in `data/notes.json` (new `/api/notes` endpoints).
+- Crew bar: drag to reorder, pin, pick a colour, and set a custom emoji per agent. Added more colour themes.
+
 ## 0.4.0
 - New `install.ps1`: one PowerShell command installs Node.js and Claude Code if missing, downloads Crew to `C:Crew`, creates the config, starts it, joins a hub and sets up autostart. Run it again to update.
 - Machines: **Get pairing code** now also shows a ready-to-paste install line for a new PC (needs the hub reachable via Cloudflare or `allowLan`).

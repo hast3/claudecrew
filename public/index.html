@@ -39,6 +39,54 @@
     --scroll-thumb: #45433f; --scroll-thumb-hover: #5c5a55;
     color-scheme: dark;
   }
+  :root[data-theme="midnight"] {
+    --bg: #0d1117; --panel: #161b22; --panel-2: #21262d; --text: #e6edf3; --muted: #8b949e;
+    --border: #30363d; --accent: #58a6ff; --accent-text: #fff; --you: #1f6feb; --you-text: #fff;
+    --ok: #6fb581; --warn: #d9a54a; --err: #e0705c; --code: #010409;
+    --add-bg: #17301f; --add-fg: #8fd6a3; --del-bg: #3a1c18; --del-fg: #f2a497; --hunk: #8ab4e8;
+    --scroll-thumb: #30363d; --scroll-thumb-hover: #484f58;
+    color-scheme: dark;
+  }
+  :root[data-theme="forest"] {
+    --bg: #1a211c; --panel: #222b24; --panel-2: #2c372e; --text: #e4ebe2; --muted: #93a394;
+    --border: #38463b; --accent: #6fbf73; --accent-text: #fff; --you: #3f7a45; --you-text: #fff;
+    --ok: #6fb581; --warn: #d9a54a; --err: #e0705c; --code: #141a15;
+    --add-bg: #17301f; --add-fg: #8fd6a3; --del-bg: #3a1c18; --del-fg: #f2a497; --hunk: #8ab4e8;
+    --scroll-thumb: #3a483d; --scroll-thumb-hover: #516353;
+    color-scheme: dark;
+  }
+  :root[data-theme="ocean"] {
+    --bg: #0f1c24; --panel: #16262f; --panel-2: #1e3340; --text: #e1eef5; --muted: #8fa9b8;
+    --border: #2a4455; --accent: #3fb6d6; --accent-text: #fff; --you: #23809c; --you-text: #fff;
+    --ok: #6fb581; --warn: #d9a54a; --err: #e0705c; --code: #0a141a;
+    --add-bg: #17301f; --add-fg: #8fd6a3; --del-bg: #3a1c18; --del-fg: #f2a497; --hunk: #8ab4e8;
+    --scroll-thumb: #2a4455; --scroll-thumb-hover: #3c6075;
+    color-scheme: dark;
+  }
+  :root[data-theme="sunset"] {
+    --bg: #241a1d; --panel: #2e2226; --panel-2: #3a2b30; --text: #f3e7e4; --muted: #b09a98;
+    --border: #4a363c; --accent: #f08a5d; --accent-text: #fff; --you: #b5523b; --you-text: #fff;
+    --ok: #6fb581; --warn: #d9a54a; --err: #e0705c; --code: #1a1215;
+    --add-bg: #17301f; --add-fg: #8fd6a3; --del-bg: #3a1c18; --del-fg: #f2a497; --hunk: #8ab4e8;
+    --scroll-thumb: #4a363c; --scroll-thumb-hover: #665058;
+    color-scheme: dark;
+  }
+  :root[data-theme="slate"] {
+    --bg: #e8ebef; --panel: #ffffff; --panel-2: #dde2e8; --text: #1d2530; --muted: #5f6b7a;
+    --border: #ccd3dc; --accent: #3b6fb6; --accent-text: #fff; --you: #3b6fb6; --you-text: #fff;
+    --ok: #6fb581; --warn: #d9a54a; --err: #e0705c; --code: #eef1f5;
+    --add-bg: #17301f; --add-fg: #8fd6a3; --del-bg: #3a1c18; --del-fg: #f2a497; --hunk: #8ab4e8;
+    --scroll-thumb: #bcc5d0; --scroll-thumb-hover: #a0abb8;
+    color-scheme: light;
+  }
+  :root[data-theme="sepia"] {
+    --bg: #f4ecd8; --panel: #fbf5e6; --panel-2: #eadfc4; --text: #3b3024; --muted: #7b6c55;
+    --border: #d9ccaa; --accent: #a0522d; --accent-text: #fff; --you: #a0522d; --you-text: #fff;
+    --ok: #6fb581; --warn: #d9a54a; --err: #e0705c; --code: #efe5cb;
+    --add-bg: #17301f; --add-fg: #8fd6a3; --del-bg: #3a1c18; --del-fg: #f2a497; --hunk: #8ab4e8;
+    --scroll-thumb: #cfc09a; --scroll-thumb-hover: #b8a87c;
+    color-scheme: light;
+  }
   * { box-sizing: border-box; }
   /* Scrollbars: slim, theme-coloured thumb on a transparent track so they don't pull focus. */
   * { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
@@ -90,6 +138,23 @@
     grid-template-columns: auto 1fr auto; gap: 2px 8px; align-items: center;
     padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-2);
   }
+  .agent[style*="--ac"] { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 14%, var(--panel-2)); }
+  .agent.pinned::after { content: '📌'; position: absolute; left: -4px; top: -7px; font-size: 11px; }
+  .agent.dragover { outline: 2px dashed var(--accent); }
+  .agrp { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 8px; border: 1px solid var(--border); border-radius: 14px; background: color-mix(in srgb, var(--text) 4%, transparent); }
+  .agrp.dragover { outline: 2px dashed var(--accent); }
+  .agrp-h { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; user-select: none; }
+  .agrp-h .ct { font-weight: 500; }
+  .agrp-h .gs { margin-left: auto; font-weight: 500; color: var(--accent); }
+  .agrp-h .gs.need { color: var(--err); }
+  .agrp-h button { padding: 0 4px; font-size: 11px; background: none; border: 0; color: var(--muted); }
+  .agrp-b { display: flex; gap: 8px; }
+  .agrp.collapsed .agrp-b { display: none; }
+  .msg[style*="--ac"] .bubble { border-left: 3px solid var(--ac); background: color-mix(in srgb, var(--ac) 10%, var(--panel)); }
+  .msg[style*="--ac"] .meta b { color: var(--ac); }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatches button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); padding: 0; }
+  .swatches button.sel { border-color: var(--text); }
   .agent .emo { font-size: 20px; grid-row: span 2; cursor: pointer; display: grid; }
   .spav { width: 34px; height: 34px; display: block; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.45)); }
   .msg .av .spav { width: 34px; height: 34px; }
@@ -151,6 +216,7 @@
   body:not(.show-activity) .activity { display: none; }
 
   /* extras under a message: attachments, approvals, changed files */
+  .proceedBtn { justify-self: end; font-weight: 700; letter-spacing: .08em; }
   .extras { display: grid; gap: 6px; margin-top: 6px; }
   .msg.you .extras { justify-items: end; }
   .card { border: 1px solid var(--border); border-radius: 10px; background: var(--panel); padding: 8px 10px; font-size: 13px; }
@@ -304,6 +370,9 @@
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch {} },
   };
+  const themeSel = $('#themeSel');
+  const applyTheme = (t) => { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; };
+  { const t = store.get('crew-theme') || ''; applyTheme(t); themeSel.value = t; themeSel.onchange = () => { store.set('crew-theme', themeSel.value); applyTheme(themeSel.value); }; }
   let agents = {};
   let order = [];
   let userName = 'You';
@@ -409,7 +478,11 @@
       return cache[key] ??= 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(frame(...(E[key] || E._)));
     };
   })();
-  const avatar = (id, cls = '') => `<img class="spav ${cls}" src="${SP(id)}" alt="">`;
+  // Custom icons (browser-saved): an emoji per agent, drawn as an SVG data URL so it works anywhere an <img> does.
+  let crewIcons = (() => { try { return JSON.parse(store.get('crew-icons')) || {}; } catch { return {}; } })();
+  const emojiSrc = (e) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text x="32" y="32" font-size="46" text-anchor="middle" dominant-baseline="central">${e.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text></svg>`);
+  const iconSrc = (id) => (crewIcons[id] ? emojiSrc(crewIcons[id]) : SP(id));
+  const avatar = (id, cls = '') => `<img class="spav ${cls}" src="${iconSrc(id)}" alt="">`;
 
   // ---------- dialogs ----------
   document.querySelectorAll('dialog').forEach((d) => {
@@ -467,6 +540,109 @@
   $('#overrideBtn').onclick = () => api('/api/budget/override');
   setInterval(renderUsage, 30000);
 
+  // ---------- agents strip: order, pins, colours (saved per browser) ----------
+  const COLORS = { orange: '#e8833a', red: '#d9534f', crimson: '#b5303f', coral: '#f07167', pink: '#d96aa7', magenta: '#c2379d', purple: '#9b6bd6', violet: '#6f5bd6', indigo: '#4c5fc4', blue: '#4a90d9', sky: '#5bbcf0', cyan: '#2cc4d6', teal: '#2fa7a0', mint: '#5fd1a5', green: '#4caf6a', lime: '#9acd3c', olive: '#8a9a3b', gold: '#c9a227', amber: '#f0b429', brown: '#9a6b47', slate: '#7b8794', silver: '#b8bec6' };
+  const colorOf = (v) => COLORS[v] || (/^#[0-9a-f]{6}$/i.test(v || '') ? v : '');
+  const loadJ = (k, d) => { try { return JSON.parse(store.get(k)) || d; } catch { return d; } };
+  let crewOrder = loadJ('crew-order', []), crewPins = loadJ('crew-pins', []), crewColors = loadJ('crew-colors', {});
+  let crewGroups = loadJ('crew-groups', {}), crewCollapsed = loadJ('crew-collapsed', {});
+  function sortedIds() {
+    const ids = Object.keys(agents);
+    const rank = (id) => { const i = crewOrder.indexOf(id); return i < 0 ? 1e6 + ids.indexOf(id) : i; };
+    return ids.sort((x, y) => (crewPins.includes(y) - crewPins.includes(x)) || rank(x) - rank(y));
+  }
+  function groupEl(g) {
+    const box = $('#agents');
+    let el = [...box.querySelectorAll('.agrp')].find((x) => x.dataset.g === g);
+    if (el) return el;
+    el = document.createElement('div');
+    el.className = 'agrp'; el.dataset.g = g;
+    el.innerHTML = '<div class="agrp-h"><span class="chev"></span><span class="gn"></span><span class="ct"></span><span class="gs"></span><button data-n title="Notes / to-do">📝</button><button data-r title="Rename group">✎</button></div><div class="agrp-b"></div>';
+    el.querySelector('.agrp-h').onclick = (ev) => {
+      if (ev.target.tagName === 'BUTTON') return;
+      crewCollapsed[g] = !crewCollapsed[g]; if (!crewCollapsed[g]) delete crewCollapsed[g];
+      store.set('crew-collapsed', JSON.stringify(crewCollapsed)); paintGroups();
+    };
+    el.querySelector('[data-n]').onclick = () => openNotes(g);
+    el.querySelector('[data-r]').onclick = () => {
+      const n = (prompt('Rename group (blank = ungroup all)', g) || '').trim();
+      if (n === g) return;
+      Object.keys(crewGroups).forEach((id) => { if (crewGroups[id] === g) { if (n) crewGroups[id] = n; else delete crewGroups[id]; } });
+      if (crewCollapsed[g]) { if (n) crewCollapsed[n] = true; delete crewCollapsed[g]; store.set('crew-collapsed', JSON.stringify(crewCollapsed)); }
+      saveCrewPrefs();
+    };
+    el.ondragover = (ev) => { ev.preventDefault(); el.classList.add('dragover'); };
+    el.ondragleave = () => el.classList.remove('dragover');
+    el.ondrop = (ev) => {
+      ev.preventDefault(); ev.stopPropagation(); el.classList.remove('dragover');
+      const from = ev.dataTransfer.getData('text/plain');
+      if (from && agents[from]) { crewGroups[from] = g; saveCrewPrefs(); }
+    };
+    return el;
+  }
+  async function openNotes(g) {
+    $('#notesTitle').textContent = '📝 ' + g;
+    const all = await fetch('/api/notes').then((r) => r.json()).catch(() => ({}));
+    let items = all[g] || [];
+    const save = () => api('/api/notes', { group: g, items });
+    const draw = () => {
+      const row = (i, n) => `<div class="row" style="gap:8px;align-items:center;padding:3px 0"><input type="checkbox" data-t="${i}" ${n.done ? 'checked' : ''}><span class="grow" style="${n.done ? 'text-decoration:line-through;opacity:.6' : ''}">${esc(n.text)}</span><button class="btn" data-d="${i}" title="Delete">×</button></div>`;
+      const todo = items.map((n, i) => [i, n]).filter(([, n]) => !n.done), done = items.map((n, i) => [i, n]).filter(([, n]) => n.done);
+      $('#notesBody').innerHTML = `<div class="row"><input id="noteNew" class="grow" placeholder="Add a to-do…"><button class="btn" id="noteAdd">Add</button></div>
+        <div class="section"><h5>To do (${todo.length})</h5>${todo.map(([i, n]) => row(i, n)).join('') || '<div class="small">Nothing open.</div>'}</div>
+        <div class="section"><h5>Done (${done.length})</h5>${done.map(([i, n]) => row(i, n)).join('') || '<div class="small">Nothing yet.</div>'}</div>`;
+      const add = () => { const v = $('#noteNew').value.trim(); if (!v) return; items.unshift({ text: v, done: false }); save(); draw(); };
+      $('#noteAdd').onclick = add;
+      $('#noteNew').onkeydown = (e) => { if (e.key === 'Enter') add(); };
+      $('#notesBody').querySelectorAll('[data-t]').forEach((c) => c.onchange = () => { items[+c.dataset.t].done = c.checked; save(); draw(); });
+      $('#notesBody').querySelectorAll('[data-d]').forEach((b) => b.onclick = () => { items.splice(+b.dataset.d, 1); save(); draw(); });
+    };
+    draw(); open('#notesDlg');
+  }
+  function paintGroups() {
+    document.querySelectorAll('#agents .agrp').forEach((el) => {
+      const g = el.dataset.g, ids = Object.keys(crewGroups).filter((id) => crewGroups[id] === g && agents[id]);
+      const working = ids.filter((id) => agents[id].status === 'working').length, need = ids.filter((id) => agents[id].needsYou).length;
+      el.classList.toggle('collapsed', !!crewCollapsed[g]);
+      el.querySelector('.chev').textContent = crewCollapsed[g] ? '▸' : '▾';
+      el.querySelector('.gn').textContent = g;
+      el.querySelector('.ct').textContent = `(${ids.length})`;
+      const gs = el.querySelector('.gs');
+      gs.textContent = need ? `${need} needs you` : working ? `${working} working` : '';
+      gs.classList.toggle('need', !!need);
+    });
+  }
+  function layoutAgents() {
+    const box = $('#agents'), seen = new Set();
+    const ids = sortedIds();
+    ids.forEach((id) => {
+      const el = document.getElementById('agent-' + id); if (!el) return;
+      const g = crewGroups[id];
+      if (!g) { box.appendChild(el); return; }
+      const ge = groupEl(g);
+      if (!seen.has(g)) { seen.add(g); box.appendChild(ge); }
+      ge.querySelector('.agrp-b').appendChild(el);
+    });
+    box.querySelectorAll('.agrp').forEach((ge) => { if (!seen.has(ge.dataset.g)) ge.remove(); });
+    paintGroups();
+  }
+  function saveCrewPrefs() {
+    store.set('crew-order', JSON.stringify(crewOrder)); store.set('crew-pins', JSON.stringify(crewPins)); store.set('crew-colors', JSON.stringify(crewColors));
+    store.set('crew-groups', JSON.stringify(crewGroups));
+    layoutAgents();
+    Object.values(agents).forEach(renderAgent);
+    document.querySelectorAll('.msg[data-from]').forEach((el) => paintMsg(el, el.dataset.from));
+    store.set('crew-icons', JSON.stringify(crewIcons));
+    document.querySelectorAll('.msg[data-from] .av').forEach((el) => { el.innerHTML = avatar(el.closest('.msg').dataset.from); });
+  }
+  function paintMsg(el, from) { const c = colorOf(crewColors[from]); if (c) el.style.setProperty('--ac', c); else el.style.removeProperty('--ac'); }
+  function moveAgent(id, dir) {
+    const ids = sortedIds(), i = ids.indexOf(id), j = i + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    crewOrder = ids; saveCrewPrefs();
+  }
+
   // ---------- agents strip ----------
   function renderAgent(a) {
     let el = document.getElementById('agent-' + a.id);
@@ -480,9 +656,24 @@
       el.querySelector('[data-act=stop]').onclick = () => api(`/api/agents/${a.id}/stop`);
       el.querySelector('[data-act=more]').onclick = () => openAgent(a.id);
       el.querySelector('.badge').onclick = () => jumpTo(agents[a.id]?.needsYou?.msgId);
+      el.draggable = true;
+      el.ondragstart = (ev) => ev.dataTransfer.setData('text/plain', a.id);
+      el.ondragover = (ev) => { ev.preventDefault(); el.classList.add('dragover'); };
+      el.ondragleave = () => el.classList.remove('dragover');
+      el.ondrop = (ev) => {
+        ev.preventDefault(); el.classList.remove('dragover');
+        const from = ev.dataTransfer.getData('text/plain');
+        if (!from || from === a.id) return;
+        const ids = sortedIds().filter((x) => x !== from);
+        ids.splice(ids.indexOf(a.id), 0, from);
+        if (crewGroups[a.id]) crewGroups[from] = crewGroups[a.id]; else delete crewGroups[from];
+        crewOrder = ids; saveCrewPrefs();
+      };
       $('#agents').appendChild(el);
+      layoutAgents();
     }
-    el.className = `agent ${a.status}${a.missing ? ' missing' : ''}${a.needsYou ? ' needs' : ''}`;
+    el.className = `agent ${a.status}${a.missing ? ' missing' : ''}${a.needsYou ? ' needs' : ''}${crewPins.includes(a.id) ? ' pinned' : ''}`;
+    if (colorOf(crewColors[a.id])) el.style.setProperty('--ac', colorOf(crewColors[a.id])); else el.style.removeProperty('--ac');
     el.title = `${a.description}\n${a.cwd}`;
     el.querySelector('.emo').innerHTML = avatar(a.id);
     el.querySelector('.n').textContent = a.name;
@@ -497,6 +688,7 @@
       : a.status === 'queued' ? `Waiting (${a.queued} queued)`
       : '@' + a.id;
     el.querySelector('.act').textContent = a.resetPending ? `${act} · fresh start next` : act;
+    paintGroups();
     if ($('#agentDlg').open && $('#agentDlg').dataset.id === a.id) renderAgentDialog(a.id);
   }
 
@@ -513,10 +705,27 @@
         <div class="row"><select id="agModel">${choice('', `Default${a.defaultModel ? ' (' + esc(a.defaultModel) + ')' : ''}`)}${modelChoices.map((m) => choice(m, m[0].toUpperCase() + m.slice(1))).join('')}</select>
         <span class="small grow">${a.lastModel ? 'Last run: ' + esc(prettyModel(a.lastModel)) : ''}</span></div>
         <div class="small" style="margin-top:4px">Sonnet and Haiku use less of your plan for quick chores. Applies from the next message.</div></div>
+      <div class="section"><h5>Crew bar</h5>
+        <div class="row"><button class="btn" id="agPin">${crewPins.includes(id) ? '📌 Unpin' : '📌 Pin to front'}</button><button class="btn" id="agL">◀ Move left</button><button class="btn" id="agR">Move right ▶</button></div>
+        <div class="swatches" style="margin-top:8px">${Object.entries(COLORS).map(([n, c]) => `<button data-c="${n}" title="${n}" style="background:${c}" class="${crewColors[id] === n ? 'sel' : ''}"></button>`).join('')}<button data-c="" title="No colour" class="${crewColors[id] ? '' : 'sel'}">✕</button><input type="color" id="agColorCustom" title="Custom colour" value="${colorOf(crewColors[id]) || '#4a90d9'}" style="width:28px;height:28px;padding:0;border:2px solid var(--border);border-radius:50%;background:none"></div></div>
+      <div class="section"><h5>Group</h5>
+        <div class="row"><input id="agGroup" list="agGroupList" placeholder="e.g. Game project" maxlength="40" style="width:200px" value="${esc(crewGroups[id] || '')}"><datalist id="agGroupList">${[...new Set(Object.values(crewGroups))].map((g) => `<option value="${esc(g)}">`).join('')}</datalist><span class="small">Blank = no group. Drag a card onto a group to add it.</span></div></div>
+      <div class="section"><h5>Icon</h5>
+        <div class="swatches" id="agIcons">${['', '🤖', '🛠️', '📋', '📁', '📦', '🏠', '🎮', '💡', '🧠', '🔧', '📊', '🧭', '🔍', '📝', '⭐', '🌱', '🛰️'].map((e) => `<button data-e="${e}" class="${(crewIcons[id] || '') === e ? 'sel' : ''}" style="background:var(--panel-2);font-size:16px">${e || '↺'}</button>`).join('')}</div>
+        <div class="row" style="margin-top:6px"><input id="agEmoji" placeholder="Or paste any emoji" maxlength="8" style="width:150px" value="${esc(crewIcons[id] || '')}"><span class="small">↺ = original icon</span></div></div>
       <div class="section"><h5>Usage</h5>
         <div class="small">Today: ${t.today.runs || 0} runs, ${fmtTok(tokens(t.today))} tokens, ${fmtDur(t.today.ms || 0)} · 7 days: ${t.week.runs || 0} runs, ${fmtTok(tokens(t.week))} tokens</div></div>
       <div class="section"><h5>Folder</h5><div class="small" style="word-break:break-all">${esc(a.cwd)}</div></div>
       <div class="row"><button class="btn" id="agReset">↺ Fresh conversation</button>${a.status !== 'idle' ? '<button class="btn" id="agStop">■ Stop</button>' : ''}<span class="grow"></span><button class="btn" id="agMention">@${esc(id)}</button></div>`;
+    $('#agPin').onclick = () => { crewPins = crewPins.includes(id) ? crewPins.filter((x) => x !== id) : [...crewPins, id]; saveCrewPrefs(); };
+    $('#agGroup').onchange = () => { const v = $('#agGroup').value.trim(); if (v) crewGroups[id] = v; else delete crewGroups[id]; saveCrewPrefs(); };
+    $('#agL').onclick = () => moveAgent(id, -1);
+    $('#agR').onclick = () => moveAgent(id, 1);
+    document.querySelectorAll('.swatches button').forEach((b) => b.onclick = () => { if (b.dataset.c) crewColors[id] = b.dataset.c; else delete crewColors[id]; saveCrewPrefs(); });
+    const cc = $('#agColorCustom'); if (cc) cc.onchange = () => { crewColors[id] = cc.value; saveCrewPrefs(); };
+    const setIcon = (e) => { e = (e || '').trim(); if (e) crewIcons[id] = e; else delete crewIcons[id]; saveCrewPrefs(); };
+    document.querySelectorAll('#agIcons button').forEach((b) => b.onclick = () => setIcon(b.dataset.e));
+    $('#agEmoji').onchange = () => setIcon($('#agEmoji').value);
     $('#agModel').onchange = () => api(`/api/agents/${id}/model`, { model: $('#agModel').value || null });
     $('#agReset').onclick = () => {
       const w = a.status === 'working' ? ' It will finish what it is doing first.' : '';
@@ -622,12 +831,26 @@
       const you = m.from === 'user';
       el = document.createElement('div');
       el.className = `msg${you ? ' you' : ''}${m.kind === 'error' ? ' err' : ''}`;
+      if (!you) { el.dataset.from = m.from; paintMsg(el, m.from); }
       const to = (m.to || []).map((t) => `<span class="tag">→ ${esc(nameOf(t))}</span>`).join('');
       const needs = m.needs ? `<span class="tag needs" title="${esc(m.needs)}">Needs you</span>` : '';
       el.innerHTML = `${you ? '' : `<div class="av">${avatar(m.from)}</div>`}
         <div class="body"><div class="meta">${you ? '' : `<b>${esc(nameOf(m.from))}</b>`}<span>${time(m.ts)}</span>${to}${needs}</div>
         <div class="bubble">${m.kind === 'error' ? esc(m.text) : md(m.text)}</div><div class="extras"></div></div>`;
       renderExtras(m, el.querySelector('.extras'));
+      // One-tap PROCEED on the newest agent reply: tells that agent to go ahead without waiting or asking.
+      document.querySelectorAll('.proceedBtn').forEach((b) => b.remove());
+      // Only offered when the reply is waiting on Dave: flagged "Needs you" or ending in a question.
+      if (!you && m.kind === 'chat' && (m.needs || /\?[\s*_)\]"'`]*$/.test(String(m.text || '').trim()))) {
+        const pb = document.createElement('button');
+        pb.className = 'btn primary proceedBtn'; pb.textContent = 'PROCEED';
+        pb.onclick = async () => {
+          pb.disabled = true;
+          await api('/api/send', { text: `@${m.from} Proceed. Go ahead now; do not wait, ask, or hold off for me.`, attachments: [] });
+          pb.remove();
+        };
+        el.querySelector('.extras').appendChild(pb);
+      }
       // A finished reply replaces that agent's live draft.
       if (!you && drafts.has(m.from)) { drafts.get(m.from).remove(); drafts.delete(m.from); }
     }
@@ -646,6 +869,7 @@
     if (!el) {
       el = document.createElement('div');
       el.className = 'msg draft';
+      el.dataset.from = agent; paintMsg(el, agent);
       el.innerHTML = `<div class="av">${avatar(agent)}</div><div class="body"><div class="meta"><b>${esc(nameOf(agent))}</b><span>typing…</span></div><div class="bubble"></div></div>`;
       $('#log').appendChild(el);
       drafts.set(agent, el);

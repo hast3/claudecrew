@@ -22,6 +22,7 @@ const DATA_DIR = path.resolve(ROOT, process.env.CREW_DATA_DIR || 'data');
 const PROMPT_DIR = path.join(DATA_DIR, 'prompts');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const CONFIG_PATH = path.resolve(ROOT, process.env.CREW_CONFIG || 'crew.config.json');
+const NOTES_PATH = path.join(DATA_DIR, 'notes.json');
 const STATE_PATH = path.join(DATA_DIR, 'state.json');
 const LOG_PATH = path.join(DATA_DIR, 'messages.jsonl');
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
@@ -1114,6 +1115,9 @@ function makeHandler(entrance) {
         presence.setActivity(busyCount() ? `${busyCount()} agent${busyCount() > 1 ? 's' : ''} working` : 'idle');
         return send(res, 200, presence.list());
       }
+      if (req.method === 'GET' && url.pathname === '/api/notes') {
+        try { return send(res, 200, JSON.parse(fs.readFileSync(NOTES_PATH, 'utf8'))); } catch { return send(res, 200, {}); }
+      }
       if (req.method === 'GET' && url.pathname === '/api/usage') {
         return send(res, 200, usage.summary(agents.map((a) => a.id)));
       }
@@ -1247,6 +1251,14 @@ function makeHandler(entrance) {
         }
 
         // ---- usage budget guard
+        if (url.pathname === '/api/notes') {
+          const g = String(body.group || '').slice(0, 60), items = Array.isArray(body.items) ? body.items.slice(0, 500) : null;
+          if (!g || !items) return send(res, 400, { error: 'group and items required' });
+          let all = {}; try { all = JSON.parse(fs.readFileSync(NOTES_PATH, 'utf8')); } catch {}
+          all[g] = items.map((i) => ({ text: String(i.text || '').slice(0, 500), done: !!i.done }));
+          fs.writeFileSync(NOTES_PATH, JSON.stringify(all, null, 2));
+          return send(res, 200, { ok: true });
+        }
         if (url.pathname === '/api/budget') {
           usage.setBudget(body);
           pump();
