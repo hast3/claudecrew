@@ -840,7 +840,7 @@
       renderExtras(m, el.querySelector('.extras'));
       // One-tap PROCEED on the newest agent reply: tells that agent to go ahead without waiting or asking.
       document.querySelectorAll('.proceedBtn').forEach((b) => b.remove());
-      // Only offered when the reply is waiting on Dave: flagged "Needs you" or ending in a question.
+      // Only offered when the reply is waiting on the user: flagged "Needs you" or ending in a question.
       if (!you && m.kind === 'chat' && (m.needs || /\?[\s*_)\]"'`]*$/.test(String(m.text || '').trim()))) {
         const pb = document.createElement('button');
         pb.className = 'btn primary proceedBtn'; pb.textContent = 'PROCEED';
