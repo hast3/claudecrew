@@ -150,6 +150,20 @@
   .agrp-h button { padding: 0 4px; font-size: 11px; background: none; border: 0; color: var(--muted); }
   .agrp-b { display: flex; gap: 8px; }
   .agrp.collapsed .agrp-b { display: none; }
+  .agrp.slim .agrp-b { flex-wrap: wrap; gap: 5px; max-width: 360px; }
+  .agrp.slim .agent { min-width: 0; padding: 3px 9px; border-radius: 999px; display: flex; gap: 0; }
+  .agrp.slim .agent .emo, .agrp.slim .agent .act, .agrp.slim .agent .mdl, .agrp.slim .agent .tools { display: none; }
+  .agrp.slim .agent .nm { font-size: 12.5px; gap: 6px; }
+  .agrp.slim .agent .dot { width: 9px; height: 9px; opacity: 1; background: #6b7280; }
+  .agrp.slim .agent.working .dot { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+  .agrp.slim .agent.queued .dot, .agrp.slim .agent.held .dot { background: #f59e0b; }
+  .agrp.slim .agent.needs .dot { background: #ef4444; }
+  .agrp.slim.tiny { padding: 3px 6px 4px; gap: 3px; }
+  .agrp.slim.tiny .agrp-b { gap: 1px 8px; max-width: 300px; }
+  .agrp.slim.tiny .agent { padding: 0; border: 0; background: none; border-radius: 0; }
+  .agrp.slim.tiny .agent .nm { font-size: 11px; gap: 4px; }
+  .agrp.slim.tiny .agent .badge { display: none; }
+  .agrp.slim.tiny .agent .dot { width: 8px; height: 8px; }
   .msg[style*="--ac"] .bubble { border-left: 3px solid var(--ac); background: color-mix(in srgb, var(--ac) 10%, var(--panel)); }
   .msg[style*="--ac"] .meta b { color: var(--ac); }
   .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -158,6 +172,7 @@
   .agent .emo { font-size: 20px; grid-row: span 2; cursor: pointer; display: grid; }
   .spav { width: 34px; height: 34px; display: block; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.45)); }
   .msg .av .spav { width: 34px; height: 34px; }
+  .spav[src^="data:image/jpeg"] { border-radius: 50%; object-fit: cover; }
   .spav.mini { width: 16px; height: 16px; display: inline-block; vertical-align: -3px; filter: none; }
   .agent .nm { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .agent .act { grid-column: 2 / 4; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -190,6 +205,7 @@
   .msg .body { min-width: 0; flex: 1; }
   .msg .meta { font-size: 12px; color: var(--muted); margin-bottom: 2px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .msg .meta b { color: var(--text); font-weight: 600; }
+  .tag.qd { background: #f59e0b; color: #000; font-weight: 700; letter-spacing: .5px; }
   .msg .bubble {
     background: var(--panel); border: 1px solid var(--border); border-radius: 4px 14px 14px 14px;
     padding: 9px 13px; overflow-wrap: anywhere;
@@ -305,10 +321,68 @@
     .meter { min-width: 46px; }
     #usageBtn { gap: 6px; padding: 4px 7px; }
   }
+
+
+  #hmore { display: contents; }
+  #moreBtn { display: none; }
+  @media (max-width: 800px) {
+    header { position: relative; flex-wrap: nowrap; }
+    header h1 { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    header h1 small { display: none; }
+    #moreBtn { display: inline-block; min-height: 34px; min-width: 38px; }
+    #hmore { display: none; position: absolute; z-index: 60; right: 8px; top: calc(100% + 4px); flex-direction: column; gap: 6px; padding: 10px;
+      min-width: 190px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.4); }
+    body.hmenu #hmore { display: flex; }
+    #hmore .hbtn { display: flex; align-items: center; justify-content: flex-start; gap: 6px; min-height: 40px; font-size: 14px; width: 100%; box-sizing: border-box; text-align: left; }
+    #hmore .hbtn[hidden] { display: none; }
+    #hmore .hbtn .wide { display: inline; }
+    #hmore select.hbtn { padding: 4px 8px; }
+  }
+
+  /* ---- sidebar layout (Grok-style) ---- */
+  #shell { flex: 1; min-height: 0; display: flex; }
+  #chatcol { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  #scroller { flex: 1; min-height: 0; }
+  #menuBtn { display: none; }
+  #selBar { display: none; align-items: center; gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--border); background: var(--panel); font-size: 13px; }
+  #selBar.on { display: flex; }
+  #selBar .grow { flex: 1; font-weight: 600; }
+  #tray { display: none; gap: 6px; padding: 6px 12px; flex-direction: column; border-bottom: 1px solid var(--err); background: color-mix(in srgb, var(--err) 10%, var(--panel)); }
+  #tray.on { display: flex; }
+  #tray .tr { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  #tray .tr span.t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tray .tr button { padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); }
+  #tray .tr button.ok { background: var(--ok); color: #fff; border-color: var(--ok); }
+  #allBtn { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-2); font-weight: 600; flex: none; }
+  #grpBtn.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .agent .unread { position: absolute; right: 8px; top: 6px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--accent); color: var(--accent-text); font-size: 11px; line-height: 18px; text-align: center; font-weight: 700; }
+  body.popout header, body.popout #agents, body.popout #scrim { display: none !important; }
+  body.popout #selAll, body.popout #selPop { display: none; }
+  #allBtn.sel, .agent.sel { outline: 2px solid var(--accent); }
+  @media (min-width: 801px) {
+    #agents { flex-direction: column; width: 250px; flex: none; overflow-y: auto; overflow-x: hidden; border-bottom: 0; border-right: 1px solid var(--border); padding: 10px; }
+    #agents .agent { max-width: none; width: 100%; box-sizing: border-box; }
+    #agents .agrp { align-self: stretch; }
+    #agents .agrp-b { flex-direction: column; }
+  }
+  @media (max-width: 800px) {
+    #menuBtn { display: inline-block; }
+    #agents { position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; width: min(86vw, 320px); flex-direction: column; overflow-y: auto; overflow-x: hidden;
+      padding: calc(12px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom)); border: 0; border-right: 1px solid var(--border);
+      transform: translateX(-102%); transition: transform .22s; box-shadow: 4px 0 24px rgba(0,0,0,.35); }
+    body.drawer #agents { transform: none; }
+    #agents .agent { max-width: none; min-height: 52px; }
+    #agents .agrp-b { flex-direction: column; }
+    #scrim { display: none; position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.45); }
+    body.drawer #scrim { display: block; }
+    #input { font-size: 16px; }
+    .ibtn, #sendBtn { min-height: 44px; }
+  }
 </style>
 </head>
 <body>
 <header>
+  <button class="hbtn" id="menuBtn" title="Crew list">☰</button>
   <span id="conn" title="Disconnected"></span>
   <h1>Claude Crew <small id="ver" style="font-size:11px;font-weight:400;color:var(--muted)"></small></h1>
   <button class="hbtn" id="usageBtn" title="Plan usage">
@@ -316,14 +390,25 @@
     <span class="meter"><span class="lbl"><span>Week</span><span id="uw">–</span></span><span class="bar" id="bw"><i></i></span></span>
   </button>
   <span class="spacer"></span>
+  <button class="hbtn" id="stopAllBtn" title="Stop every agent now" style="background:#a22;color:#fff">⏹ Stop all</button>
+  <button class="hbtn" id="moreBtn" title="More">⋯</button>
+  <div id="hmore">
   <button class="hbtn on" id="updBtn" hidden></button>
   <button class="hbtn" id="machBtn" title="Machines running Crew">🖥<span class="wide"> Machines</span></button>
+  <button class="hbtn" id="intBtn" title="What is linked and who can use it">🔌<span class="wide"> Integrations</span></button>
   <button class="hbtn" id="schedBtn" title="Scheduled jobs">⏰<span class="wide"> Schedules</span></button>
   <button class="hbtn" id="actBtn" title="Show what agents are doing step by step">⚙<span class="wide"> Activity</span></button>
+  <select class="hbtn" id="themeSel" title="Page theme"><option value="">🎨 Auto</option><option value="light">Light</option><option value="dark">Dark</option><option value="midnight">Midnight</option><option value="forest">Forest</option><option value="ocean">Ocean</option><option value="sunset">Sunset</option><option value="slate">Slate</option><option value="sepia">Sepia</option></select>
   <button class="hbtn" id="notifyBtn" title="Notifications">🔔</button>
   <a class="hbtn" id="signOut" href="#" hidden style="text-decoration:none">⎋<span class="wide"> Sign out</span></a>
+  </div>
 </header>
-<div id="agents"></div>
+<div id="shell">
+<div id="scrim"></div>
+<div id="agents"><button id="allBtn" class="sel">💬 All crew</button><button id="grpBtn" class="hbtn">👥 Group chat</button></div>
+<div id="chatcol">
+<div id="selBar"><span class="grow" id="selName"></span><button class="hbtn" id="selMention">@ mention</button><button class="hbtn" id="selPop" title="Open in its own window">⧉ Pop out</button><button class="hbtn" id="selAll">Show all</button></div>
+<div id="tray"></div>
 <main id="scroller"><div id="log"></div></main>
 <footer>
   <div id="held"><span id="heldText"></span><button class="btn primary" id="overrideBtn">Run anyway</button></div>
@@ -337,6 +422,8 @@
   </div>
   <div class="hint" id="hint"></div>
 </footer>
+</div>
+</div>
 
 <dialog id="usageDlg">
   <div class="dlg-head"><h3>Plan usage</h3><button class="x" data-close>×</button></div>
@@ -346,9 +433,17 @@
   <div class="dlg-head"><h3>Machines</h3><button class="x" data-close>×</button></div>
   <div class="dlg-body" id="machBody"></div>
 </dialog>
+<dialog id="intDlg">
+  <div class="dlg-head"><h3>Integrations</h3><button class="x" data-close>×</button></div>
+  <div class="dlg-body" id="intBody"></div>
+</dialog>
 <dialog id="schedDlg">
   <div class="dlg-head"><h3>Scheduled jobs</h3><button class="x" data-close>×</button></div>
   <div class="dlg-body" id="schedBody"></div>
+</dialog>
+<dialog id="notesDlg">
+  <div class="dlg-head"><h3 id="notesTitle">Notes</h3><button class="x" data-close>×</button></div>
+  <div class="dlg-body" id="notesBody"></div>
 </dialog>
 <dialog id="agentDlg">
   <div class="dlg-head"><h3 id="agentTitle">Agent</h3><button class="x" data-close>×</button></div>
@@ -368,8 +463,20 @@
   const $ = (s) => document.querySelector(s);
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+    set(k, v) {
+      try { localStorage.setItem(k, v); } catch {}
+      if (k.startsWith('crew-')) fetch('/api/prefs', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Crew': '1' }, body: JSON.stringify({ key: k, value: String(v) }) }).catch(() => {});
+    },
   };
+  // layout prefs (order, groups, slim, ...) live on the server so a refresh or another browser keeps them
+  try {
+    const x = new XMLHttpRequest(); x.open('GET', '/api/prefs', false); x.send();
+    if (x.status === 200) {
+      const sp = JSON.parse(x.responseText) || {};
+      for (const k of Object.keys(sp)) { try { localStorage.setItem(k, sp[k]); } catch {} }
+      for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('crew-') && !(k in sp) && k !== 'crew-theme') store.set(k, localStorage.getItem(k)); }
+    }
+  } catch {}
   const themeSel = $('#themeSel');
   const applyTheme = (t) => { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; };
   { const t = store.get('crew-theme') || ''; applyTheme(t); themeSel.value = t; themeSel.onchange = () => { store.set('crew-theme', themeSel.value); applyTheme(themeSel.value); }; }
@@ -557,11 +664,15 @@
     if (el) return el;
     el = document.createElement('div');
     el.className = 'agrp'; el.dataset.g = g;
-    el.innerHTML = '<div class="agrp-h"><span class="chev"></span><span class="gn"></span><span class="ct"></span><span class="gs"></span><button data-n title="Notes / to-do">📝</button><button data-r title="Rename group">✎</button></div><div class="agrp-b"></div>';
+    el.innerHTML = '<div class="agrp-h"><span class="chev"></span><span class="gn"></span><span class="ct"></span><span class="gs"></span><button data-s title="Size: full → compact → slim (name + light only)">▭</button><button data-n title="Notes / to-do">📝</button><button data-r title="Rename group">✎</button></div><div class="agrp-b"></div>';
     el.querySelector('.agrp-h').onclick = (ev) => {
       if (ev.target.tagName === 'BUTTON') return;
       crewCollapsed[g] = !crewCollapsed[g]; if (!crewCollapsed[g]) delete crewCollapsed[g];
       store.set('crew-collapsed', JSON.stringify(crewCollapsed)); paintGroups();
+    };
+    el.querySelector('[data-s]').onclick = e => {
+      e.stopPropagation(); crewSlim[g] = ((crewSlim[g] || 0) + 1) % 3; if (!crewSlim[g]) delete crewSlim[g];
+      store.set('crew-slim', JSON.stringify(crewSlim)); paintGroups();
     };
     el.querySelector('[data-n]').onclick = () => openNotes(g);
     el.querySelector('[data-r]').onclick = () => {
@@ -604,6 +715,7 @@
       const g = el.dataset.g, ids = Object.keys(crewGroups).filter((id) => crewGroups[id] === g && agents[id]);
       const working = ids.filter((id) => agents[id].status === 'working').length, need = ids.filter((id) => agents[id].needsYou).length;
       el.classList.toggle('collapsed', !!crewCollapsed[g]);
+      el.classList.toggle('slim', !!crewSlim[g]); el.classList.toggle('tiny', crewSlim[g] === 2);
       el.querySelector('.chev').textContent = crewCollapsed[g] ? '▸' : '▾';
       el.querySelector('.gn').textContent = g;
       el.querySelector('.ct').textContent = `(${ids.length})`;
@@ -632,7 +744,7 @@
     layoutAgents();
     Object.values(agents).forEach(renderAgent);
     document.querySelectorAll('.msg[data-from]').forEach((el) => paintMsg(el, el.dataset.from));
-    store.set('crew-icons', JSON.stringify(crewIcons));
+    store.set('crew-icons', JSON.stringify(crewIcons)); store.set('crew-pics', JSON.stringify(crewPics));
     document.querySelectorAll('.msg[data-from] .av').forEach((el) => { el.innerHTML = avatar(el.closest('.msg').dataset.from); });
   }
   function paintMsg(el, from) { const c = colorOf(crewColors[from]); if (c) el.style.setProperty('--ac', c); else el.style.removeProperty('--ac'); }
@@ -644,6 +756,29 @@
   }
 
   // ---------- agents strip ----------
+  // Tag messages that are waiting in an agent's queue so a busy agent doesn't look locked up.
+  function updateQueued() {
+    const want = new Set();
+    for (const a of Object.values(agents)) {
+      let n = a.queued || 0;
+      if (!n) continue;
+      const list = [...msgs.values()];
+      for (let i = list.length - 1; i >= 0 && n > 0; i--) {
+        const m = list[i].m;
+        if (m.kind === 'chat' && m.from !== a.id && (m.to || []).includes(a.id)) { want.add(m.id + '|' + a.id); n--; }
+      }
+    }
+    document.querySelectorAll('.tag.qd').forEach((t) => { if (!want.has(t.dataset.k)) t.remove(); });
+    for (const k of want) {
+      const [id, ag] = k.split('|'); const e = msgs.get(id)?.el; if (!e) continue;
+      if ([...e.querySelectorAll('.tag.qd')].some((t) => t.dataset.k === k)) continue;
+      const t = document.createElement('span'); t.className = 'tag qd'; t.dataset.k = k;
+      t.title = nameOf(ag) + ' is busy; this message is waiting its turn'; t.textContent = 'QUEUED';
+      e.querySelector('.meta')?.appendChild(t);
+    }
+  }
+  setInterval(updateQueued, 1500);
+
   function renderAgent(a) {
     let el = document.getElementById('agent-' + a.id);
     if (!el) {
@@ -652,7 +787,7 @@
       el.innerHTML = `<span class="badge">!</span><span class="emo"></span><span class="nm"><span class="dot"></span><span class="n"></span><span class="mdl"></span></span>
         <span class="tools"><button data-act="stop" title="Stop">■</button><button data-act="more" title="Model, usage, reset">⋯</button></span>
         <span class="act"></span>`;
-      el.querySelector('.emo').onclick = el.querySelector('.nm').onclick = () => mention(a.id);
+      el.querySelector('.emo').onclick = el.querySelector('.nm').onclick = () => selectAgent(a.id);
       el.querySelector('[data-act=stop]').onclick = () => api(`/api/agents/${a.id}/stop`);
       el.querySelector('[data-act=more]').onclick = () => openAgent(a.id);
       el.querySelector('.badge').onclick = () => jumpTo(agents[a.id]?.needsYou?.msgId);
@@ -688,6 +823,7 @@
       : a.status === 'queued' ? `Waiting (${a.queued} queued)`
       : '@' + a.id;
     el.querySelector('.act').textContent = a.resetPending ? `${act} · fresh start next` : act;
+    el.title = `${a.name}: ${act}`;
     paintGroups();
     if ($('#agentDlg').open && $('#agentDlg').dataset.id === a.id) renderAgentDialog(a.id);
   }
@@ -709,10 +845,11 @@
         <div class="row"><button class="btn" id="agPin">${crewPins.includes(id) ? '📌 Unpin' : '📌 Pin to front'}</button><button class="btn" id="agL">◀ Move left</button><button class="btn" id="agR">Move right ▶</button></div>
         <div class="swatches" style="margin-top:8px">${Object.entries(COLORS).map(([n, c]) => `<button data-c="${n}" title="${n}" style="background:${c}" class="${crewColors[id] === n ? 'sel' : ''}"></button>`).join('')}<button data-c="" title="No colour" class="${crewColors[id] ? '' : 'sel'}">✕</button><input type="color" id="agColorCustom" title="Custom colour" value="${colorOf(crewColors[id]) || '#4a90d9'}" style="width:28px;height:28px;padding:0;border:2px solid var(--border);border-radius:50%;background:none"></div></div>
       <div class="section"><h5>Group</h5>
-        <div class="row"><input id="agGroup" list="agGroupList" placeholder="e.g. Game project" maxlength="40" style="width:200px" value="${esc(crewGroups[id] || '')}"><datalist id="agGroupList">${[...new Set(Object.values(crewGroups))].map((g) => `<option value="${esc(g)}">`).join('')}</datalist><span class="small">Blank = no group. Drag a card onto a group to add it.</span></div></div>
+        <div class="row"><input id="agGroup" list="agGroupList" placeholder="e.g. Diablo Modding" maxlength="40" style="width:200px" value="${esc(crewGroups[id] || '')}"><datalist id="agGroupList">${[...new Set(Object.values(crewGroups))].map((g) => `<option value="${esc(g)}">`).join('')}</datalist><span class="small">Blank = no group. Drag a card onto a group to add it.</span></div></div>
       <div class="section"><h5>Icon</h5>
         <div class="swatches" id="agIcons">${['', '🤖', '🛠️', '📋', '📁', '📦', '🏠', '🎮', '💡', '🧠', '🔧', '📊', '🧭', '🔍', '📝', '⭐', '🌱', '🛰️'].map((e) => `<button data-e="${e}" class="${(crewIcons[id] || '') === e ? 'sel' : ''}" style="background:var(--panel-2);font-size:16px">${e || '↺'}</button>`).join('')}</div>
-        <div class="row" style="margin-top:6px"><input id="agEmoji" placeholder="Or paste any emoji" maxlength="8" style="width:150px" value="${esc(crewIcons[id] || '')}"><span class="small">↺ = original icon</span></div></div>
+        <div class="row" style="margin-top:6px"><input id="agEmoji" placeholder="Or paste any emoji" maxlength="8" style="width:150px" value="${esc(crewIcons[id] || '')}"><span class="small">↺ = original icon</span></div>
+        <div class="row" style="margin-top:6px"><button class="btn" id="agPic">🖼 Upload picture</button>${crewPics[id] ? '<button class="btn" id="agPicX">Remove picture</button>' : ''}<input type="file" id="agPicFile" accept="image/*" hidden></div></div>
       <div class="section"><h5>Usage</h5>
         <div class="small">Today: ${t.today.runs || 0} runs, ${fmtTok(tokens(t.today))} tokens, ${fmtDur(t.today.ms || 0)} · 7 days: ${t.week.runs || 0} runs, ${fmtTok(tokens(t.week))} tokens</div></div>
       <div class="section"><h5>Folder</h5><div class="small" style="word-break:break-all">${esc(a.cwd)}</div></div>
@@ -726,6 +863,18 @@
     const setIcon = (e) => { e = (e || '').trim(); if (e) crewIcons[id] = e; else delete crewIcons[id]; saveCrewPrefs(); };
     document.querySelectorAll('#agIcons button').forEach((b) => b.onclick = () => setIcon(b.dataset.e));
     $('#agEmoji').onchange = () => setIcon($('#agEmoji').value);
+    $('#agPic').onclick = () => $('#agPicFile').click();
+    if ($('#agPicX')) $('#agPicX').onclick = () => { delete crewPics[id]; saveCrewPrefs(); renderAgentDialog(id); };
+    $('#agPicFile').onchange = (ev) => {
+      const f = ev.target.files[0]; if (!f) return;
+      const img = new Image(); img.onload = () => {
+        const c = document.createElement('canvas'), n = 96, k = Math.max(n / img.width, n / img.height);
+        c.width = c.height = n; const x = c.getContext('2d');
+        x.drawImage(img, (n - img.width * k) / 2, (n - img.height * k) / 2, img.width * k, img.height * k);
+        crewPics[id] = c.toDataURL('image/jpeg', 0.85); saveCrewPrefs(); renderAgentDialog(id);
+      };
+      img.src = URL.createObjectURL(f);
+    };
     $('#agModel').onchange = () => api(`/api/agents/${id}/model`, { model: $('#agModel').value || null });
     $('#agReset').onclick = () => {
       const w = a.status === 'working' ? ' It will finish what it is doing first.' : '';
@@ -855,6 +1004,7 @@
       if (!you && drafts.has(m.from)) { drafts.get(m.from).remove(); drafts.delete(m.from); }
     }
     msgs.set(m.id, { m, el });
+    if (typeof sel === 'string' && sel) el.hidden = !matches(m); noteUnread(m);
     // Live "typing" bubbles stay at the bottom; everything else goes above them.
     const draftFirst = [...drafts.values()][0];
     if (draftFirst) log.insertBefore(el, draftFirst); else log.appendChild(el);
@@ -986,6 +1136,52 @@
     machTimer = setInterval(() => { if ($('#machDlg').open && !$('#machCode').querySelector('b') && !$('#machDlg').contains(document.activeElement.closest('input') || null)) renderMachines(); else if (!$('#machDlg').open) clearInterval(machTimer); }, 15000);
   };
 
+  // ---------- integrations ----------
+  async function renderIntegrations(force) {
+    $('#intBody').innerHTML = '<div class="small">Checking what is linked… (first load takes a few seconds)</div>';
+    const r = await fetch('/api/integrations' + (force ? '?refresh=1' : ''));
+    if (!r.ok) { $('#intBody').textContent = 'Could not load.'; return; }
+    const d = await r.json();
+    const dot = (s) => `<span style="color:${s === 'ok' ? '#4caf50' : s === 'auth' ? '#e0a030' : s === 'idle' ? '#888' : '#e05050'}">●</span>`;
+    const who = (ids) => ids.length >= d.allAgents.length ? 'All agents' : ids.map((id) => esc(id)).join(', ');
+    const mcp = d.mcp.map((m) => `<div class="job"><div class="row"><b>${dot(m.status)} ${esc(m.name)}</b><span class="small grow">${esc(m.statusText)}</span></div>
+      <div class="small">Can use it: <b>${who(m.agents)}</b></div><div class="small" style="word-break:break-all">${esc(m.target)}</div></div>`).join('')
+      || '<div class="small">None linked.</div>';
+    const svc = d.services.map((s) => `<div class="job"><div class="row"><b>${dot(s.status)} ${esc(s.name)}</b></div>
+      <div class="small">${esc(s.detail)}</div><div class="small">${esc(s.access)}</div></div>`).join('');
+    const keys = d.keys.map((k) => `<div class="small">🔑 <b>${esc(k.name)}</b>${k.service ? ' · ' + esc(k.service) : ''}</div>`).join('')
+      || '<div class="small">None found.</div>';
+    $('#intBody').innerHTML = `<div class="row"><span class="small grow">Checked ${when(d.builtAt)} · agents run in "${esc(d.permissionMode)}" mode</span><button class="btn" id="intRefresh">Refresh</button><button class="btn primary" id="intAdd">+ Add</button></div>
+      <h4>Connected apps (MCP)</h4>${mcp}<h4>Services &amp; tasks</h4>${svc}
+      <h4>API keys &amp; tokens on this PC</h4><div class="job">${keys}<div class="small">Names only. Any agent can read these from the shell.</div></div>`;
+    $('#intRefresh').onclick = () => renderIntegrations(true);
+    $('#intAdd').onclick = renderIntegrationPicker;
+  }
+  const INT_CATALOG = [
+    ['🎨', 'Leonardo AI', 'image generation (consistent icon and art styles)', 'an API key from your Leonardo account, which agent should use it, and a style prompt'],
+    ['🏠', 'Home Assistant', 'smart-home control', 'your HA address, a long-lived access token and which agent gets it'],
+    ['✈️', 'Telegram bot', 'messages and images to your phone', 'a bot token from @BotFather and your chat id'],
+    ['🐙', 'GitHub', 'repos, pull requests and issues', 'a personal access token with the scopes you choose'],
+    ['🔊', 'ElevenLabs / voice', 'text to speech', 'an API key'],
+    ['🧩', 'Something else', 'any MCP server, API or service', 'tell me what it is and I will work out the rest'],
+  ];
+  function renderIntegrationPicker() {
+    $('#intBody').innerHTML = `<div class="row"><b class="grow">What do you want to add?</b><button class="btn" id="intBack">Back</button></div>
+      <div class="small">Pick one and I will walk you through exactly what is needed, one step at a time. Secrets are never shown back in chat.</div>`
+      + INT_CATALOG.map((c, i) => `<div class="job" data-i="${i}" style="cursor:pointer"><div class="row"><b>${c[0]} ${esc(c[1])}</b><span class="small grow">${esc(c[2])}</span></div></div>`).join('');
+    $('#intBack').onclick = () => renderIntegrations(false);
+    $('#intBody').querySelectorAll('[data-i]').forEach((el) => {
+      el.onclick = async () => {
+        const c = INT_CATALOG[+el.dataset.i];
+        const text = `@assistant Walk me through adding the "${c[1]}" integration (${c[2]}). Typically that needs: ${c[3]}. First check whether it is already set up here. Then ask me for the pieces one at a time, tell me exactly where to click to get each one, never echo secrets back, and when I have given you everything, set it up, test it, and confirm what is linked and which agents can use it.`;
+        $('#intDlg').close();
+        const r = await api('/api/send', { text, attachments: [] });
+        if (!r) return;
+      };
+    });
+  }
+  $('#intBtn').onclick = () => { renderIntegrations(false); open('#intDlg'); };
+
   // ---------- schedules ----------
   const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   function dayText(days) {
@@ -1047,7 +1243,7 @@
   function localNotifyOn() { return 'Notification' in window && Notification.permission === 'granted' && store.get('crew-notify') === 'on'; }
   function notifyLocal(m) {
     if (!localNotifyOn()) return;
-    try { new Notification(nameOf(m.from), { body: m.text.slice(0, 180), tag: m.from, icon: SP(m.from) }); } catch {}
+    try { new Notification(nameOf(m.from), { body: m.text.slice(0, 180), tag: m.from, icon: iconSrc(m.from) }); } catch {}
   }
   const b64ToBytes = (b) => Uint8Array.from(atob(b.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - b.length % 4) % 4)), (c) => c.charCodeAt(0));
   function deviceLabel() {
@@ -1168,7 +1364,8 @@
   });
   $('#sendBtn').onclick = sendMsg;
   async function sendMsg() {
-    const text = ta.value.trim();
+    let text = ta.value.trim();
+    if (sel && text && !/(^|\s)@\w+/.test(text)) text = selIds().map((i) => '@' + i).join(' ') + ' ' + text;
     if (pending.some((p) => !p.id)) return alert('Still uploading — one moment.');
     const attachments = pending.map((p) => p.id);
     if (!text && !attachments.length) return;
@@ -1184,6 +1381,75 @@
   }
 
   const scroller = $('#scroller');
+
+  // ---------- sidebar: per-bot chats, approvals tray ----------
+  const POP = new URLSearchParams(location.search).get('chat');
+  let sel = POP != null ? POP : (store.get('crew-sel') || '');   // one id, or "a,b,c" for a group chat
+  let grpMode = false, live = false; const unread = {};
+  const selIds = () => (sel ? sel.split(',').filter(Boolean) : []);
+  const involves = (m, id) => m.from === id || (m.to || []).includes(id);
+  const matches = (m) => !sel || (m.kind !== 'system' && selIds().some((id) => involves(m, id)));
+  function applyFilter() {
+    msgs.forEach(({ m, el }) => { el.hidden = !matches(m); });
+    const ids = selIds();
+    $('#allBtn').classList.toggle('sel', !ids.length);
+    $('#grpBtn').classList.toggle('on', grpMode);
+    document.querySelectorAll('.agent').forEach((e) => e.classList.toggle('sel', ids.includes(e.id.slice(6))));
+    $('#selBar').classList.toggle('on', !!ids.length);
+    $('#selName').textContent = (ids.length > 1 ? 'Group: ' : 'Chat with ') + ids.map(nameOf).join(', ');
+    $('#selMention').hidden = ids.length !== 1;
+    $('#input').placeholder = ids.length ? 'Message ' + ids.map(nameOf).join(' + ') + '…' : 'Message the crew…';
+    ids.forEach((id) => { unread[id] = 0; }); paintUnread();
+    scroller.scrollTop = scroller.scrollHeight;
+  }
+  function paintUnread() {
+    document.querySelectorAll('.agent').forEach((e) => {
+      const n = unread[e.id.slice(6)] || 0; let u = e.querySelector('.unread');
+      if (!n) { if (u) u.remove(); return; }
+      if (!u) { u = document.createElement('span'); u.className = 'unread'; e.appendChild(u); }
+      u.textContent = n > 99 ? '99+' : n;
+    });
+  }
+  function noteUnread(m) {
+    if (!live || m.from === 'user' || m.kind === 'activity' || m.kind === 'system' || !agents[m.from]) return;
+    if (selIds().includes(m.from) && document.visibilityState === 'visible') return;
+    unread[m.from] = (unread[m.from] || 0) + 1; paintUnread();
+  }
+  function selectAgent(id) {
+    if (grpMode && id) { const s2 = new Set(selIds()); s2.has(id) ? s2.delete(id) : s2.add(id); sel = [...s2].join(','); }
+    else sel = id || '';
+    if (POP == null) store.set('crew-sel', sel);
+    if (!grpMode || !id) document.body.classList.remove('drawer');
+    applyFilter();
+  }
+  function renderTray() {
+    const t = $('#tray'), list = Object.values(agents).filter((a) => a.needsYou);
+    t.classList.toggle('on', list.length > 0);
+    t.innerHTML = '';
+    list.forEach((a) => {
+      const r = document.createElement('div'); r.className = 'tr';
+      r.innerHTML = `<b>${esc(a.name)}</b><span class="t">${esc(a.needsYou.text)}</span><button data-j>Open</button><button class="ok" data-p>Proceed</button>`;
+      r.querySelector('[data-j]').onclick = () => { selectAgent(a.id); setTimeout(() => jumpTo(a.needsYou?.msgId), 50); };
+      r.querySelector('[data-p]').onclick = async (e) => { e.target.disabled = true; await api('/api/send', { text: `@${a.id} Proceed. Go ahead now; do not wait, ask, or hold off for me.`, attachments: [] }); };
+      t.appendChild(r);
+    });
+  }
+  $('#stopAllBtn').onclick = async () => { await fetch('/api/stopall', { method: 'POST', headers: { 'X-Crew': '1', 'Content-Type': 'application/json' }, body: '{}' }); };
+  $('#moreBtn').onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('hmenu'); };
+  document.addEventListener('click', (e) => { if (!e.target.closest('#hmore') && e.target.id !== 'themeSel') document.body.classList.remove('hmenu'); });
+  $('#allBtn').onclick = () => { grpMode = false; selectAgent(''); };
+  $('#grpBtn').onclick = () => { grpMode = !grpMode; if (!grpMode && selIds().length > 1) selectAgent(selIds()[0]); applyFilter(); };
+  $('#selPop').onclick = () => window.open(location.pathname + '?chat=' + encodeURIComponent(sel), '_blank', 'popup=yes,width=480,height=760');
+  if (POP != null) document.body.classList.add('popout');
+  $('#selAll').onclick = () => selectAgent('');
+  $('#selMention').onclick = () => mention(sel);
+  $('#menuBtn').onclick = () => document.body.classList.toggle('drawer');
+  $('#scrim').onclick = () => document.body.classList.remove('drawer');
+  new MutationObserver(renderTray).observe($('#agents'), { subtree: true, attributes: true, attributeFilter: ['class'] });
+  setInterval(renderTray, 4000);
+  setTimeout(() => { renderTray(); applyFilter(); }, 1200);
+  setTimeout(() => { live = true; }, 3000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') applyFilter(); });
   setActivity(store.get('crew-activity') === '1');
   connect();
 

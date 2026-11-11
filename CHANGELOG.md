@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0
+- Sidebar layout on desktop and a slide-out crew drawer on phones, with unread badges and a compact header menu.
+- Integrations panel: linked MCP servers, services and secret-looking environment variable names (values are never read), and which agents can reach them.
+- Layout preferences (order, groups, pins) sync through the server, so a refresh or another browser keeps them.
+- Start a message with ! to make it urgent: it skips the concurrency cap and the budget hold.
+- Stop-all button, friendlier activity labels, queued badge.
+- Automatic fresh conversation when an agent's context gets heavy or a session runs long, carrying a short summary forward.
 ## 0.5.0
 - Groups: put agents into named containers (agent dialog > Group, or drag a card onto another). Groups collapse and show a status summary. Saved per browser.
 - Notes pad: each group has a 📝 checklist of open and done items, saved on the server in `data/notes.json` (new `/api/notes` endpoints).

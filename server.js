@@ -14,6 +14,7 @@ const changes = require('./lib/changes');
 const { createScheduler } = require('./lib/scheduler');
 const { createPush } = require('./lib/webpush');
 const { createUpdater } = require('./lib/update');
+const { createIntegrations } = require('./lib/integrations');
 const { createPresence, startClient, pairOnce } = require('./lib/presence');
 
 const ROOT = __dirname;
@@ -22,11 +23,14 @@ const DATA_DIR = path.resolve(ROOT, process.env.CREW_DATA_DIR || 'data');
 const PROMPT_DIR = path.join(DATA_DIR, 'prompts');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const CONFIG_PATH = path.resolve(ROOT, process.env.CREW_CONFIG || 'crew.config.json');
+const PREFS_PATH = path.join(DATA_DIR, 'prefs.json');
 const NOTES_PATH = path.join(DATA_DIR, 'notes.json');
 const STATE_PATH = path.join(DATA_DIR, 'state.json');
 const LOG_PATH = path.join(DATA_DIR, 'messages.jsonl');
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const HISTORY_LIMIT = 400;
+// Quiet automatic fresh conversation when context gets heavy or a session runs long.
+const AUTO_RESET_TOKENS = 110000, AUTO_RESET_TURNS = 25;
 const ID_RE = /^[a-z][a-z0-9-]*$/;
 
 fs.mkdirSync(PROMPT_DIR, { recursive: true });
@@ -145,6 +149,10 @@ const push = createPush({
   subsFile: path.join(DATA_DIR, 'push-subscriptions.json'),
   // Contact URL the push services see; never an email address.
   subject: settings.cloudflare ? `https://${settings.cloudflare.hostname}` : 'https://localhost',
+});
+const integrations = createIntegrations({
+  getAgents: () => agents, getConfig: () => ({ settings, cloudflare: settings.cloudflare }),
+  pushCount: () => push.count(), machines: () => presence.list(),
 });
 const updater = createUpdater({
   root: ROOT, dataDir: DATA_DIR, repo: 'hast3/claudecrew',
@@ -311,11 +319,20 @@ function describeTool(name, input = {}) {
     case 'Edit': case 'MultiEdit': return `Editing ${file(input.file_path)}`;
     case 'Write': return `Writing ${file(input.file_path)}`;
     case 'NotebookEdit': return `Editing ${file(input.notebook_path)}`;
-    case 'Bash': case 'PowerShell': return `Running: ${trunc(input.description || input.command, 70)}`;
-    case 'Grep': return `Searching for "${trunc(input.pattern, 40)}"`;
-    case 'Glob': return `Finding files: ${trunc(input.pattern, 40)}`;
-    case 'WebSearch': return `Searching the web: ${trunc(input.query, 60)}`;
-    case 'WebFetch': return `Reading ${trunc(input.url, 60)}`;
+    case 'Bash': case 'PowerShell': {
+      if (input.description) return trunc(input.description, 70);
+      const c = String(input.command || '');
+      if (/python/i.test(c)) return 'Running a script';
+      if (/gits/i.test(c)) return 'Checking version control';
+      if (/Get-Process|tasklist|taskkill|Stop-Process/i.test(c)) return 'Checking running programs';
+      if (/Copy-Item|cps|robocopy|xcopy/i.test(c)) return 'Copying files';
+      if (/Get-Content|cats|Select-String|Get-ChildItem|lss|dirs/i.test(c)) return 'Looking at files';
+      return 'Working on the computer';
+    }
+    case 'Grep': return 'Searching the code';
+    case 'Glob': return 'Looking for files';
+    case 'WebSearch': return 'Searching the web';
+    case 'WebFetch': return 'Reading a web page';
     case 'Task': case 'Agent': return `Starting a helper: ${trunc(input.description, 60)}`;
     case 'TodoWrite': return 'Updating its task list';
     default: return `Using ${name}`;
@@ -430,6 +447,7 @@ function coalesceUsers(items) {
   return {
     fromId: 'user',
     hop: 0,
+    urgent: items.some((b) => b.urgent),
     attachments,
     text: `${settings.userName} sent these together. Follow the latest intent; earlier notes are context.\n\n${items.map((b, i) => `(${i + 1}) ${b.text}`).join('\n\n')}`,
   };
@@ -450,7 +468,8 @@ function pump() {
   for (const a of agents) {
     const r = runtime[a.id];
     if (r.busy || !r.queue.length) continue;
-    if (g && !r.queue[0].force) {
+    const urgent = r.queue.some((q) => q.urgent);
+    if (g && !r.queue[0].force && !urgent) {
       if (r.status !== 'held') { r.status = 'held'; broadcastAgent(a); }
       const key = `${g.window}:${g.resumesAt}`;
       if (lastGuardNotice !== key) {
@@ -461,7 +480,7 @@ function pump() {
       }
       continue;
     }
-    if (running >= settings.maxConcurrent) {
+    if (running >= settings.maxConcurrent && !urgent) {
       if (r.status === 'held') { r.status = 'queued'; broadcastAgent(a); }
       continue;
     }
@@ -694,7 +713,15 @@ function launch(a, item, isRetry, snapP) {
   });
   proc.stderr.setEncoding('utf8');
   proc.stderr.on('data', (c) => { stderr = (stderr + c).slice(-4000); });
-  try { proc.stdin.write(streamUserLine(formatPrompt(item))); }
+  let first = formatPrompt(item);
+  if (!sessionId && state.carry?.[a.id]) {
+    first = `[Fresh conversation. Your previous one ended with this reply, for continuity; rely on CLAUDE.md, memory and files for anything else:
+${state.carry[a.id]}]
+
+` + first;
+    delete state.carry[a.id]; saveState();
+  }
+  try { proc.stdin.write(streamUserLine(first)); }
   catch { closeStdin(); }
 
   let finished = false;
@@ -722,6 +749,20 @@ function launch(a, item, isRetry, snapP) {
       text: typeof raw.result === 'string' && raw.result.trim() ? raw.result : lastText,
       isError: !!raw.is_error || (raw.subtype && raw.subtype !== 'success'),
     } : null;
+    if (!r.stopped && result && !result.isError && !r.resetPending) {
+      const u = raw?.usage || {};
+      const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+      state.turns = state.turns || {};
+      state.turns[a.id] = (state.turns[a.id] || 0) + 1;
+      if (ctx > AUTO_RESET_TOKENS || state.turns[a.id] >= AUTO_RESET_TURNS) {
+        state.carry = state.carry || {};
+        state.carry[a.id] = String(result.text || '').slice(0, 1500);
+        state.turns[a.id] = 0;
+        r.resetPending = true;
+        post({ kind: 'system', text: `${a.name} auto-refreshed its conversation to keep things fast (it keeps its notes and CLAUDE.md).` });
+      }
+      saveState();
+    }
     for (const ev of resultEvents) usage.recordRun(a.id, ev);
     if (resultEvents.length) broadcastUsage();
 
@@ -1115,6 +1156,12 @@ function makeHandler(entrance) {
         presence.setActivity(busyCount() ? `${busyCount()} agent${busyCount() > 1 ? 's' : ''} working` : 'idle');
         return send(res, 200, presence.list());
       }
+      if (req.method === 'GET' && url.pathname === '/api/integrations') {
+        return send(res, 200, await integrations.get(url.searchParams.get('refresh') === '1'));
+      }
+      if (req.method === 'GET' && url.pathname === '/api/prefs') {
+        try { return send(res, 200, JSON.parse(fs.readFileSync(PREFS_PATH, 'utf8'))); } catch { return send(res, 200, {}); }
+      }
       if (req.method === 'GET' && url.pathname === '/api/notes') {
         try { return send(res, 200, JSON.parse(fs.readFileSync(NOTES_PATH, 'utf8'))); } catch { return send(res, 200, {}); }
       }
@@ -1166,7 +1213,10 @@ function makeHandler(entrance) {
         const body = JSON.parse((await readBody(req)) || '{}');
 
         if (url.pathname === '/api/send') {
-          const text = String(body.text || '').trim();
+          let text = String(body.text || '').trim();
+          // A leading "!" makes the message urgent: it skips the concurrency cap.
+          const urgent = text.startsWith('!');
+          if (urgent) text = text.replace(/^!+s*/, '');
           const attachments = (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 10).map((id) => {
             const name = /^[\w-]+$/.test(String(id)) && fs.readdirSync(UPLOAD_DIR).find((f) => f.startsWith(id + '__'));
             if (!name) return null;
@@ -1177,7 +1227,7 @@ function makeHandler(entrance) {
           const to = userTargets(text);
           const shown = attachments.map(({ path: _p, ...rest }) => rest);
           post({ from: 'user', text: text || '(attachment)', to, attachments: shown.length ? shown : undefined });
-          for (const id of to) enqueue(id, { fromId: 'user', text: text || 'Please look at the attached file(s).', hop: 0, attachments });
+          for (const id of to) enqueue(id, { fromId: 'user', text: text || 'Please look at the attached file(s).', hop: 0, attachments, urgent });
           return send(res, 200, { ok: true, to });
         }
         // Update to the latest release. This PC only, like restart.
@@ -1251,6 +1301,18 @@ function makeHandler(entrance) {
         }
 
         // ---- usage budget guard
+        if (url.pathname === '/api/stopall') {
+          for (const a of agents) stopAgent(a.id);
+          return send(res, 200, { ok: true });
+        }
+        if (url.pathname === '/api/prefs') {
+          const k = String(body.key || '');
+          if (!/^crew-[w-]{1,40}$/.test(k) || typeof body.value !== 'string' || body.value.length > 20000) return send(res, 400, { error: 'bad pref' });
+          let all = {}; try { all = JSON.parse(fs.readFileSync(PREFS_PATH, 'utf8')); } catch {}
+          all[k] = body.value;
+          fs.writeFileSync(PREFS_PATH, JSON.stringify(all, null, 2));
+          return send(res, 200, { ok: true });
+        }
         if (url.pathname === '/api/notes') {
           const g = String(body.group || '').slice(0, 60), items = Array.isArray(body.items) ? body.items.slice(0, 500) : null;
           if (!g || !items) return send(res, 400, { error: 'group and items required' });
