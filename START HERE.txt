@@ -1,0 +1,23 @@
+CLAUDE CREW - START HERE
+========================
+
+You only need to do ONE thing:
+
+   Double-click the file called  INSTALL.bat
+
+Then answer the questions it asks. Press Enter to accept the answer shown in [brackets].
+It installs everything and opens Crew in your web browser when it is done.
+
+If Windows shows a blue "Windows protected your PC" box:
+   click "More info", then "Run anyway".
+
+You also need a paid Claude account (Pro or Max) to sign in with. Free accounts do not work.
+Get one at https://claude.ai
+
+Next time, double-click the "Claude Crew" icon on your Desktop.
+
+If something goes wrong, the installer says what to do. You can run INSTALL.bat again as
+many times as you like. It never deletes your settings or chat history.
+If you are stuck, send the file install-log.txt (in this folder) to whoever is helping you.
+
+Full guide with pictures-in-words and fixes: docs\SETUP.md

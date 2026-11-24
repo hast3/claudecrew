@@ -1,0 +1,94 @@
+[
+  {
+    "id": "wake-on-waiting",
+    "name": "Wake whoever someone is waiting on",
+    "group": "Handoffs & waking",
+    "section": "Reliability",
+    "tags": ["wake", "core"],
+    "enabled": true,
+    "summary": "{{author}} is waiting on @{{waitingOn}}",
+    "trigger": [{ "type": "status.waiting" }, { "type": "reply.waiting" }],
+    "conditions": [
+      { "type": "isAgent", "agent": "{{waitingOn}}" }
+    ],
+    "steps": [
+      { "type": "wait", "for": "2m" },
+      { "type": "waitUntil", "cond": { "type": "agentIdle", "agent": "{{author}}" }, "timeout": "30m", "every": "20s" },
+      { "type": "stopIf", "why": "a handoff to @{{waitingOn}} already went out", "cond": { "type": "handoffSentRecently", "to": "{{waitingOn}}", "within": "25m" } },
+      { "type": "stopIf", "why": "@{{waitingOn}} already has it queued", "cond": { "type": "queuedFrom", "agent": "{{waitingOn}}", "from": "{{author}}" } },
+      { "type": "wake", "agent": "{{waitingOn}}", "model": "sonnet",
+        "announce": "⚡ @{{author}} said it was waiting on @{{waitingOn}} but never sent the handoff, so I woke @{{waitingOn}}.",
+        "brief": "@{{author}} is waiting on you but didn't send a handoff. Their note:\n\"{{line}}\"\n\nCheck the STATUS tail first. If it's already handled, say so in one line and stop. Otherwise do your part, then append one STATUS line." }
+    ],
+    "limits": { "perHour": 6, "perTarget": "15m", "targetVar": "waitingOn", "chainDepth": 3 }
+  },
+  {
+    "id": "verify-on-done",
+    "name": "Check the files exist when something is marked done",
+    "group": "Done means proven",
+    "section": "Verify",
+    "tags": ["verify", "core"],
+    "enabled": true,
+    "summary": "@{{author}} marked done",
+    "trigger": { "type": "status.line", "match": { "done": true } },
+    "conditions": [{ "type": "isAgent", "agent": "{{author}}" }],
+    "steps": [
+      { "type": "verifyPaths", "text": "{{line}}" },
+      { "type": "wake", "agent": "{{author}}", "model": "sonnet",
+        "if": { "type": "and", "all": [{ "type": "varTrue", "var": "verify.any" }, { "type": "not", "cond": { "type": "varTrue", "var": "verify.ok" } }] },
+        "announce": "⚠️ @{{author}} marked something done, but these files don't exist: {{verify.missing}}. Sent it back.",
+        "brief": "You marked this done in STATUS:\n\"{{line}}\"\n\nThese files from that line don't exist: {{verify.missing}}. Find out why, fix it or correct the STATUS line, then append one STATUS line." }
+    ],
+    "limits": { "perHour": 10 }
+  },
+  {
+    "id": "publish-when-game-closes",
+    "name": "Publish when the game closes",
+    "group": "Release pipeline",
+    "section": "Publish",
+    "tags": ["game", "publish"],
+    "enabled": true,
+    "summary": "@{{author}} blocked by an open game",
+    "trigger": { "type": "status.line", "match": { "line": "/not (published|deployed)|unpublished|(publish|deploy)\\w* (pending|blocked|waiting)/i" } },
+    "conditions": [
+      { "type": "isAgent", "agent": "{{author}}" },
+      { "type": "textMatches", "text": "{{line}}", "re": "game\\.exe|game (is )?(still )?(open|running|connected)" }
+    ],
+    "steps": [
+      { "type": "post", "text": "⏳ Waiting for Game.exe to close, then @{{author}} publishes." },
+      { "type": "waitUntil", "process": true, "cond": { "type": "processCount", "name": "Game.exe", "op": "=", "n": 0 }, "timeout": "4h", "every": "30s" },
+      { "type": "stopIf", "why": "@{{author}} already published", "cond": { "type": "statusSince", "author": "{{author}}", "re": "(?<!not |un)\\b(published|deployed)\\b" } },
+      { "type": "post", "if": { "type": "varTrue", "var": "timedOut" }, "text": "Game.exe has been open 4 hours, so @{{author}}'s publish is still waiting. Close the game and tell @{{author}} to go." },
+      { "type": "stopIf", "why": "timed out", "cond": { "type": "varTrue", "var": "timedOut" } },
+      { "type": "wake", "agent": "{{author}}", "model": "sonnet",
+        "announce": "⚡ Game.exe closed, so I woke @{{author}} to publish.",
+        "brief": "Game.exe is closed now. You were blocked on it:\n\"{{line}}\"\n\nPublish/deploy what you built (backup first), check it landed, then append one STATUS line." }
+    ],
+    "limits": { "perHour": 4, "perTarget": "30m", "targetVar": "author" }
+  },
+  {
+    "id": "stray-process-sweep",
+    "name": "Close processes an agent left running",
+    "group": "Release pipeline",
+    "section": "Housekeeping",
+    "tags": ["safety", "cleanup"],
+    "enabled": true,
+    "summary": "@{{agent}} turn ended",
+    "trigger": { "type": "turn.end" },
+    "steps": [{ "type": "sweepStray", "agent": "{{agent}}" }],
+    "limits": {}
+  },
+  {
+    "id": "status-trim",
+    "name": "Trim STATUS.md",
+    "group": "Housekeeping",
+    "section": "Files",
+    "tags": ["cleanup"],
+    "enabled": true,
+    "summary": "STATUS.md has {{lines}} lines",
+    "trigger": { "type": "file.status" },
+    "conditions": [{ "type": "fileLines", "file": "{{file}}", "over": 60 }],
+    "steps": [{ "type": "trimFile", "file": "{{file}}", "over": 60, "keep": 30, "archive": "{{archive}}" }],
+    "limits": { "perHour": 4 }
+  }
+]

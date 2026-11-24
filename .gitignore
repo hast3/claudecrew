@@ -1,0 +1,21 @@
+data/
+workspace/
+node_modules/
+env_vars.txt
+*secrets*
+
+# Old hand-made backups; git history replaces these.
+*.bak
+*.bak*
+
+# Constantly-appended activity logs (not code).
+STATUS.md
+STATUS-archive.md
+*.log
+
+# Per-project scratch (dated subfolders; may be deleted any time).
+scratch/
+crew.config.json
+.env
+install-log.txt
+runtime/

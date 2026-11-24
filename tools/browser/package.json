@@ -1,0 +1,8 @@
+{
+  "name": "crew-browser",
+  "private": true,
+  "description": "Playwright browser tool for Crew agents (MCP server).",
+  "dependencies": {
+    "@playwright/mcp": "^0.0.85"
+  }
+}

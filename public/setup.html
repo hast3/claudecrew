@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set up Claude Crew</title>
+<style>
+  :root { --bg:#14161a; --panel:#1d2026; --text:#e8eaed; --muted:#9aa0a8; --border:#2e333b; --accent:#7aa2ff; --good:#5fd38d; --bad:#ff7b72; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f4f5f7; --panel:#fff; --text:#1c1f24; --muted:#5f6670; --border:#d6d9de; --accent:#2f5fd0; --good:#1a8a4a; --bad:#c62828; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 system-ui,Segoe UI,sans-serif; }
+  main { max-width:560px; margin:0 auto; padding:22px 16px 60px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .card h2 { font-size:16px; margin:0 0 4px; }
+  .card p { margin:0 0 10px; color:var(--muted); font-size:14px; }
+  label.row { display:flex; gap:10px; align-items:flex-start; cursor:pointer; }
+  input[type=text] { width:100%; padding:10px 12px; font-size:16px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); }
+  input[type=checkbox] { width:20px; height:20px; margin-top:2px; flex:none; }
+  button { font:inherit; padding:10px 16px; border-radius:10px; border:1px solid var(--border); background:var(--panel); color:var(--text); cursor:pointer; }
+  button.primary { background:var(--accent); color:#fff; border-color:transparent; font-weight:600; }
+  button:disabled { opacity:.6; cursor:default; }
+  .status { display:flex; gap:8px; align-items:center; font-size:15px; }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--muted); flex:none; }
+  .dot.ok { background:var(--good); } .dot.no { background:var(--bad); }
+  .helper { display:flex; gap:8px; align-items:center; margin-top:8px; }
+  .helper .nm { flex:0 0 36%; } .helper .fp { flex:1; }
+  .helper button { padding:8px 11px; flex:none; }
+  .err { color:var(--bad); font-size:14px; margin-top:8px; min-height:1em; }
+  .hint { font-size:13px; color:var(--muted); margin-top:6px; }
+  .actions { display:flex; gap:10px; align-items:center; margin-top:6px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Set up Claude Crew</h1>
+  <p class="sub">Four quick choices. You can change all of them later.</p>
+
+  <div class="card">
+    <h2>1. Is Claude ready?</h2>
+    <div class="status"><span class="dot" id="cDot"></span><span id="cText">Checking...</span></div>
+    <p class="hint" id="cHint" style="display:none">Crew needs Claude Code, signed in with a paid Claude account. Open PowerShell, type <b>claude</b>, press Enter and follow the sign-in. Then press Check again.</p>
+    <div class="actions"><button id="cInst" class="primary" style="display:none">Install Claude Code</button><button id="cSign" class="primary" style="display:none">Sign in</button><button id="cBtn">Check again</button></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Your name</h2>
+    <p>Crew uses it to say hello and tell the helpers who you are.</p>
+    <input type="text" id="name" maxlength="40" autocomplete="given-name" placeholder="Your first name">
+  </div>
+
+  <div class="card">
+    <h2>3. Helpers for your folders <span style="color:var(--muted);font-weight:400">(optional)</span></h2>
+    <p>You always get an Assistant. To add a helper that works inside a folder (a project, notes, documents), paste the folder path. In File Explorer, click the address bar, press Ctrl+C, then paste here.</p>
+    <div id="helpers"></div>
+    <div class="actions"><button id="addH">+ Add a helper</button></div>
+  </div>
+
+  <div class="card">
+    <h2>4. Options</h2>
+    <label class="row"><input type="checkbox" id="lan"><span>Use Crew from my phone<br><span class="hint">Only while the phone is on the same home or office Wi-Fi.</span></span></label>
+    <label class="row" style="margin-top:12px"><input type="checkbox" id="auto" checked><span>Start Crew when I sign in to Windows</span></label>
+  </div>
+
+  <div class="actions">
+    <button class="primary" id="go">Finish setup</button>
+    <span id="msg" class="hint"></span>
+  </div>
+  <div class="err" id="err"></div>
+</main>
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var H = { 'Content-Type': 'application/json', 'x-crew': '1' };
+  function api(path, body) {
+    return fetch(path, body === undefined ? {} : { method: 'POST', headers: H, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Something went wrong'); return j; }); });
+  }
+  function addHelper(name, cwd) {
+    var d = document.createElement('div'); d.className = 'helper';
+    d.innerHTML = '<input type="text" class="nm" placeholder="Name" maxlength="40"><input type="text" class="fp" placeholder="C:\\path\\to\\folder"><button title="Remove" aria-label="Remove">&times;</button>';
+    d.querySelector('.nm').value = name || ''; d.querySelector('.fp').value = cwd || '';
+    d.querySelector('button').onclick = function () { d.remove(); };
+    $('#helpers').appendChild(d);
+  }
+  function check() {
+    $('#cDot').className = 'dot'; $('#cText').textContent = 'Checking...';
+    api('/api/setup/info').then(function (i) {
+      var ok = i.claude && i.claude.ok;
+      $('#cDot').className = 'dot ' + (ok ? 'ok' : 'no');
+      $('#cText').textContent = ok ? 'Claude Code is installed and answering' : (i.claude && i.claude.found ? 'Claude Code is installed but not signed in yet' : 'Claude Code was not found');
+      $('#cHint').style.display = ok ? 'none' : 'block';
+      var found = i.claude && i.claude.found;
+      $('#cInst').style.display = (!ok && !found) ? '' : 'none';
+      $('#cSign').style.display = (!ok && found) ? '' : 'none';
+      if (!$('#name').value) $('#name').value = i.userName || '';
+    }).catch(function (e) { $('#cText').textContent = e.message; });
+  }
+  $('#cBtn').onclick = check;
+  $('#cSign').onclick = function () {
+    api('/api/setup/signin', {}).then(function () { $('#cText').textContent = 'A sign-in window opened. Finish signing in there, then press Check again.'; }).catch(function (e) { $('#cText').textContent = e.message; });
+  };
+  $('#cInst').onclick = function () {
+    $('#cInst').disabled = true; $('#cDot').className = 'dot'; $('#cText').textContent = 'Installing Claude Code... this takes a minute or two.';
+    api('/api/setup/install-claude', {}).then(function () {
+      $('#cText').textContent = 'Installed. Restarting Crew...';
+      (function wait(n) {
+        setTimeout(function () { fetch('/api/setup/info').then(function (x) { if (!x.ok) throw 0; $('#cInst').disabled = false; check(); }).catch(function () { if (n < 40) wait(n + 1); }); }, 1500);
+      })(0);
+    }).catch(function (e) { $('#cText').textContent = e.message; $('#cInst').disabled = false; });
+  };
+  $('#addH').onclick = function () { addHelper(); };
+  $('#go').onclick = function () {
+    var helpers = [].map.call(document.querySelectorAll('.helper'), function (d) { return { name: d.querySelector('.nm').value.trim(), cwd: d.querySelector('.fp').value.trim() }; })
+      .filter(function (h) { return h.cwd || h.name; });
+    $('#err').textContent = ''; $('#go').disabled = true; $('#msg').textContent = 'Saving...';
+    api('/api/setup/save', { name: $('#name').value.trim(), allowLan: $('#lan').checked, autostart: $('#auto').checked, helpers: helpers })
+      .then(function (r) {
+        $('#msg').textContent = 'Saved. Starting Crew...';
+        var url = r.phoneUrl; if (url) $('#msg').textContent += ' Phone address: ' + url;
+        return new Promise(function (res) { setTimeout(res, 3500); }).then(function wait(n) {
+          n = typeof n === 'number' ? n : 0;
+          return fetch('/api/setup/info').then(function (x) { if (!x.ok) throw 0; return x.json(); }).then(function (j) {
+            if (j.needsSetup) throw 0; location.href = '/';
+          }).catch(function () { if (n > 40) { location.href = '/'; return; } return new Promise(function (res) { setTimeout(res, 1000); }).then(function () { return wait(n + 1); }); });
+        });
+      })
+      .catch(function (e) { $('#err').textContent = e.message; $('#msg').textContent = ''; $('#go').disabled = false; });
+  };
+  check();
+})();
+</script>
+</body>
+</html>

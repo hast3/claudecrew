@@ -1,0 +1,14 @@
+{
+  "name": "claude-crew",
+  "version": "0.36.3",
+  "private": true,
+  "description": "A local chat room for a team of Claude Code agents that can hand work to each other.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js --open",
+    "check": "node lib/check.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
