@@ -308,6 +308,8 @@ Crew has **no built-in TLS**. For HTTPS, put something in front of it:
 
 ### Cloudflare Tunnel (optional)
 
+The easy way: in Crew open **Settings > Set up internet access**. It walks through each step below, checks your answers (team, tunnel program, port, public address) and saves them. The manual steps follow for reference.
+
 1. In Cloudflare Zero Trust, create a **Tunnel** (`cloudflared`) on this machine, and a public hostname such as `crew.example.com`.
 2. Point the hostname's service at **`http://localhost:7778`**, the dedicated Cloudflare entrance. **Never point it at 7777.** The tunnel connects from this machine, and 7777 trusts local connections.
 3. Create an **Access application** for that hostname with a policy that allows only your email(s). Copy its **Application Audience (AUD) Tag**.

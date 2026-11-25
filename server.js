@@ -13,6 +13,7 @@ const { createUsage } = require('./lib/usage');
 const changes = require('./lib/changes');
 const activity = require('./lib/activity');
 const watchdog = require('./lib/watchdog');
+const { createRootWatch } = require('./lib/rootwatch');
 const credentials = require('./lib/credentials');
 const localCfg = require('./lib/local-config');
 const { createScheduler } = require('./lib/scheduler');
@@ -67,6 +68,84 @@ function loadCloudflare(c) {
   if (missing.length) throw new Error(`"cloudflare" is enabled in crew.config.json but ${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} empty`);
   if (!cf.allowedEmails.length) throw new Error('"cloudflare.allowedEmails" must list at least one email address');
   return cf;
+}
+
+// ---- Internet access (Cloudflare) setup: read, validate, check. Edited from Settings > Internet access, on this PC only.
+function cfClean(v) {
+  const hostname = String(v.hostname || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase();
+  let teamDomain = String(v.teamDomain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase();
+  if (teamDomain && !teamDomain.includes('.')) teamDomain += '.cloudflareaccess.com';
+  const aud = String(v.aud || '').trim();
+  const port = Number(v.port || 7778);
+  const emails = (Array.isArray(v.allowedEmails) ? v.allowedEmails : String(v.allowedEmails || '').split(/[\s,;]+/))
+    .map((e) => String(e).trim().toLowerCase()).filter(Boolean);
+  return { enabled: !!v.enabled, hostname, teamDomain, aud, port, allowedEmails: emails };
+}
+function cfProblems(c) {
+  const p = [];
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(c.hostname)) p.push('Public address should look like crew.example.com (no https://, no slash).');
+  if (!/\.cloudflareaccess\.com$/.test(c.teamDomain)) p.push('Team name should look like myteam.cloudflareaccess.com (or just myteam).');
+  if (!/^[a-f0-9]{32,80}$/i.test(c.aud)) p.push('The Application Audience (AUD) tag is a long string of letters and numbers (64 characters). Copy it again from your Access application.');
+  if (!Number.isInteger(c.port) || c.port < 1024 || c.port > 65535) p.push('Tunnel port must be a whole number from 1024 to 65535.');
+  if (c.port === (settings.port || 7777)) p.push('The tunnel port must be different from the main Crew port. Pointing the tunnel at the main port would let anyone through.');
+  if (!c.allowedEmails.length) p.push('Add at least one email address that may sign in.');
+  else if (c.allowedEmails.some((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))) p.push('One of the email addresses does not look right.');
+  return p;
+}
+function cfRun(cmd, args) {
+  return new Promise((resolve) => execFile(cmd, args, { windowsHide: true, timeout: 8000 }, (err, out) => resolve({ ok: !err, out: String(out || '') })));
+}
+function portListening(port) {
+  return new Promise((resolve) => {
+    const s = require('net').connect({ port, host: '127.0.0.1' });
+    const done = (v) => { s.destroy(); resolve(v); };
+    s.setTimeout(1500, () => done(false)); s.on('connect', () => done(true)); s.on('error', () => done(false));
+  });
+}
+async function cfServiceState() {
+  if (process.platform !== 'win32') return null;
+  const sc = await cfRun('sc', ['query', 'cloudflared']);
+  return (sc.out.match(/STATE\s*:\s*\d+\s+(\w+)/) || [])[1] || null;
+}
+async function cfStatus() {
+  const c = cfClean(JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')).cloudflare || {});
+  const service = await cfServiceState();
+  const where = await cfRun(process.platform === 'win32' ? 'where' : 'which', ['cloudflared']);
+  return {
+    values: { ...c, allowedEmails: c.allowedEmails.join('\n') },
+    runningNow: !!settings.cloudflare,
+    cloudflaredInstalled: where.ok || !!service,
+    tunnelService: service ? service.toLowerCase() : 'not installed',
+    entranceListening: await portListening(c.port),
+    mainPort: settings.port || 7777,
+  };
+}
+async function cfCheck(c) {
+  const out = [];
+  const add = (ok, text) => out.push({ ok, text });
+  const probs = cfProblems(c);
+  if (probs.length) { probs.forEach((t) => add(false, t)); return out; }
+  try {
+    const r = await fetch(`https://${c.teamDomain}/cdn-cgi/access/certs`, { signal: AbortSignal.timeout(8000) });
+    if (r.ok) add(true, `Cloudflare knows your team (${c.teamDomain}).`);
+    else add(false, `Cloudflare does not know a team called ${c.teamDomain} (answer ${r.status}). Check the spelling: it is shown in Zero Trust under Settings > Custom pages.`);
+  } catch { add(false, 'Could not reach Cloudflare from this PC. Check your internet connection.'); }
+  const state = await cfServiceState();
+  if (state === 'RUNNING') add(true, 'The tunnel program (cloudflared) is installed and running on this PC.');
+  else if (state) add(false, `The tunnel program is installed but ${state.toLowerCase()}. Start it from Windows Services.`);
+  else add(false, 'The tunnel program (cloudflared) is not installed as a service on this PC. Step 2 walks through it.');
+  if (await portListening(c.port)) add(true, `This PC is listening on the tunnel port ${c.port}.`);
+  else add(false, `Nothing is listening on port ${c.port} yet. Save, then restart Crew.`);
+  try {
+    const r = await fetch(`https://${c.hostname}/`, { redirect: 'manual', signal: AbortSignal.timeout(10000) });
+    const loc = r.headers.get('location') || '';
+    if (r.status >= 300 && r.status < 400 && loc.includes(c.teamDomain)) add(true, 'Your public address reaches this PC and Cloudflare asks visitors to sign in. That is what you want.');
+    else if (r.status === 401 || r.status === 403) add(true, 'Your public address answered and refused an unsigned visitor. Good.');
+    else if (r.status === 200) add(false, `WARNING: ${c.hostname} answered a visitor who is not signed in. Add the Access application (step 3) before using it.`);
+    else if (r.status >= 500) add(false, `The address ${c.hostname} exists but the tunnel is not connected (answer ${r.status}). In Zero Trust > Networks > Tunnels it should say Healthy.`);
+    else add(false, `The public address answered with ${r.status}. Check the public hostname in the tunnel (step 2).`);
+  } catch { add(false, `Could not reach https://${c.hostname}. Check the address, and that its DNS record was created (step 2).`); }
+  return out;
 }
 
 function loadConfig() {
@@ -619,9 +698,18 @@ const noteHandoffLimit = watchdog.createLimitNotice({
   },
 });
 
+// Tripwire: anything new at the root of C:\ or the top of the user folder, Documents, Desktop or Downloads during a run
+// is reported to Assistant and the agent(s) whose run it was (lib/rootwatch.js). Report only; nothing is deleted.
+const rootWatch = createRootWatch({
+  assistant: COORDINATOR, nameOf: (id) => byId[id]?.name || id,
+  wake(id, text) { if (byId[id]) enqueue(id, { fromId: 'crew', fromName: 'Crew', text, hop: 0 }); },
+  log: (m) => console.log('  ' + m),
+});
+
 function run(a, item, isRetry = false) {
   const r = runtime[a.id];
   running++;
+  try { rootWatch.begin(a.id); } catch {}
   r.busy = true;
   r.stopped = false;
   r.status = 'working';
@@ -766,6 +854,7 @@ function launch(a, item, isRetry, snapP) {
   const r = runtime[a.id];
   if (r.stopped) {
     running--;
+    try { rootWatch.end(a.id); } catch {}
     r.busy = false;
     post({ kind: 'system', text: `${a.name} was stopped.` });
     r.status = r.queue.length ? 'queued' : 'idle';
@@ -997,6 +1086,7 @@ ${state.carry[a.id]}]
 
     running--;
     r.busy = false;
+    try { rootWatch.end(a.id); } catch {}
 
     if (r.stopped) {
       post({ kind: 'system', text: `${a.name} was stopped.`, from: a.id, changes: changed || undefined });
@@ -1017,11 +1107,11 @@ ${state.carry[a.id]}]
       const asked = parseAskBlocks(result.text);
       const delivered = deliverHandoffs(a, asked.text, item.hop || 0, item);
       const denials = guardDenials(a, resultEvents.flatMap((ev) => ev.permission_denials || []));
-      // "Needs you" is only for real decisions: a refused tool call or an explicit ask block.
+      // "Needs you" (tray card + phone notification) is only for an explicit ask block (crew rule 15: emergencies).
+      // A refused tool call stays as a quiet, collapsed, still-approvable note in the chat (m.denials).
       // The turn summary's needs_action guess is ignored; it was mostly informational noise.
       void summary;
-      const needs = denials.length ? `Needs your OK to ${denials.map((d) => d.reason ? `${d.label}: ${d.reason.replace(/\.$/, '')}` : d.label).join('; ')}`
-        : asked.asks.length ? asked.asks[0].q : '';
+      const needs = asked.asks.length ? asked.asks[0].q : '';
       const m = post({
         from: a.id, text: delivered.show || '(no reply)', to: delivered.targets, hop: item.hop,
         changes: changed || undefined,
@@ -1034,13 +1124,13 @@ ${state.carry[a.id]}]
           turns: resultEvents.reduce((s, e) => s + (e.num_turns || 0), 0),
         } : undefined,
       });
-      r.needsYou = needs ? { text: needs, msgId: m.id, perm: !!denials.length } : null;
+      r.needsYou = needs ? { text: needs, msgId: m.id } : null;
       // the owner already talked to this agent since its older questions, so they are stale: drop them.
       const before = asks.length;
       if (item.fromId === 'user') asks = asks.filter((x) => x.agent !== a.id);
       for (const k of asked.asks) addAsk(a.id, m.id, k.q, k.options);
       if (asked.asks.length || asks.length !== before) saveAsks();
-      notifyPhone(a, m);
+      if (!denials.length || asked.asks.length) notifyPhone(a, m); // a refused command alone sends no notification
       try { autos.replied(a.id, String(result.text || ''), delivered.targets, item.hop || 0); } catch {}
     }
 
@@ -1229,6 +1319,12 @@ function addAsk(agentId, msgId, q, options) {
   // Same question from the same agent again: keep only the newest copy.
   asks = asks.filter((x) => !(x.agent === agentId && askKey(x.q) === askKey(q)));
   asks.push({ id: crypto.randomUUID(), agent: agentId, msgId, q, options, ts: Date.now() });
+  // Count what still reaches the owner: ask cards per day (state.askCounts, GET /api/asks/stats, log line).
+  const day = new Date().toISOString().slice(0, 10);
+  state.askCounts = state.askCounts || {};
+  state.askCounts[day] = (state.askCounts[day] || 0) + 1;
+  console.log(`Ask card #${state.askCounts[day]} today (${day}) from ${agentId}`);
+  saveState();
   pruneAsks();
   if (asks.length > 50) asks = asks.slice(-50);
 }
@@ -1672,6 +1768,10 @@ function makeHandler(entrance) {
           canEditAdvanced: !viaCloudflare && isLocal(req),
         });
       }
+      if (req.method === 'GET' && url.pathname === '/api/cloudflare') {
+        if (viaCloudflare || !isLocal(req)) return send(res, 403, { error: 'this PC only' });
+        return send(res, 200, await cfStatus());
+      }
       if (req.method === 'GET' && url.pathname === '/api/machines/link')return send(res, 200, { url: rawCfg.presenceHub?.url || '' });
       if (req.method === 'GET' && url.pathname === '/api/machines') {
         presence.setActivity(busyCount() ? `${busyCount()} agent${busyCount() > 1 ? 's' : ''} working` : 'idle');
@@ -1697,6 +1797,7 @@ function makeHandler(entrance) {
       }
       if (req.method === 'GET' && url.pathname === '/api/automations') return send(res, 200, { rules: autos.list(), paused: autos.paused(), active: autos.active() });
       if (req.method === 'GET' && url.pathname === '/api/automation-runs') return send(res, 200, autos.runs(Number(url.searchParams.get('n')) || 50));
+      if (req.method === 'GET' && url.pathname === '/api/asks/stats') return send(res, 200, state.askCounts || {});
       if (req.method === 'GET' && url.pathname === '/api/usage') {
         return send(res, 200, usage.summary(agents.map((a) => a.id)));
       }
@@ -1887,6 +1988,18 @@ function makeHandler(entrance) {
             }
           } catch (e) { return send(res, 400, { error: e.message }); }
           fs.copyFileSync(CONFIG_PATH, path.join(DATA_DIR, 'crew.config.before-settings.json'));
+          fs.writeFileSync(CONFIG_PATH, JSON.stringify(raw, null, 2));
+          return send(res, 200, { ok: true, needsRestart: true });
+        }
+        if (url.pathname === '/api/cloudflare' || url.pathname === '/api/cloudflare/check') {
+          if (viaCloudflare || !isLocal(req) || req.headers['x-crew'] !== '1') return send(res, 403, { error: 'this PC only' });
+          const c = cfClean(body);
+          if (url.pathname === '/api/cloudflare/check') return send(res, 200, { checks: await cfCheck(c) });
+          const probs = c.enabled ? cfProblems(c) : [];
+          if (probs.length) return send(res, 400, { error: probs.join(' ') });
+          const raw = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+          fs.copyFileSync(CONFIG_PATH, path.join(DATA_DIR, 'crew.config.before-settings.json'));
+          raw.cloudflare = { ...(raw.cloudflare || {}), enabled: c.enabled, hostname: c.hostname, teamDomain: c.teamDomain, aud: c.aud, port: c.port, allowedEmails: c.allowedEmails };
           fs.writeFileSync(CONFIG_PATH, JSON.stringify(raw, null, 2));
           return send(res, 200, { ok: true, needsRestart: true });
         }

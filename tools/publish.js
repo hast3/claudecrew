@@ -1,6 +1,8 @@
 // Publish a scrubbed snapshot of Claude Crew to the public GitHub repo.
 //
-//   node tools/publish.js            build, verify, commit and push to origin main (+ tag v<version>)
+//   node tools/publish.js --go       build, verify, commit and push to origin main (+ tag v<version>)
+//   node tools/publish.js --go --release   same, then create the GitHub release v<version> with uninstall.ps1 + UNINSTALL.bat attached
+//   node tools/publish.js            no flag = same as --dry (nothing is ever pushed without --go)
 //   node tools/publish.js --dry      build and verify only; leaves scratch/publish to inspect
 //   node tools/publish.js --notes "first bullet|second bullet"   changelog bullets (default: recent commit subjects)
 //
@@ -43,7 +45,8 @@ const EXAMPLE_IDS = new Set(EXAMPLE_AGENTS.map((a) => a.id));
 const ALLOWED_WORDS = new Set([]);
 
 const args = process.argv.slice(2);
-const dry = args.includes('--dry');
+const dry = args.includes('--dry') || !args.includes('--go');
+const makeRelease = args.includes('--release');
 const notesArg = args.includes('--notes') ? args[args.indexOf('--notes') + 1] : '';
 
 function git(cmd, opts = {}) {
@@ -220,5 +223,14 @@ if (tagIt) git(['push', '-q', REMOTE, `v${version}`], { cwd: OUT });
 const pushed = git(['rev-parse', '--short', 'HEAD'], { cwd: OUT });
 fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'data', 'publish-last.json'), JSON.stringify({ sha: git(['rev-parse', 'HEAD']), version, when: new Date().toISOString() }, null, 2));
+if (makeRelease) {
+  const gh = (a) => execFileSync('gh', a, { cwd: OUT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  const slug = git(['remote', 'get-url', REMOTE]).replace(/^.*github\.com[:/]/, '').replace(/\.git$/, '');
+  const assets = ['uninstall.ps1', 'UNINSTALL.bat'].map((f) => path.join(OUT, f)).filter((f) => fs.existsSync(f));
+  let have = true; try { gh(['release', 'view', `v${version}`, '--repo', slug]); } catch { have = false; }
+  if (have) gh(['release', 'upload', `v${version}`, ...assets, '--clobber', '--repo', slug]);
+  else gh(['release', 'create', `v${version}`, ...assets, '--repo', slug, '--title', `Claude Crew v${version}`, '--notes', (notesArg || `Claude Crew v${version}.`) + '\n\nTo remove Claude Crew completely: download UNINSTALL.bat and uninstall.ps1 into one folder and double-click UNINSTALL.bat (add -DryRun to preview).']);
+  console.log(`Release v${version} on ${slug} with ${assets.length} uninstall file(s) attached.`);
+}
 git(['worktree', 'remove', '--force', OUT]);
 console.log(`Published v${version} to ${REMOTE}/${BRANCH} as ${pushed}${tagIt ? ` (tag v${version})` : ''}.`);

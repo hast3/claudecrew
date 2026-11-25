@@ -19,6 +19,10 @@ powershell -ExecutionPolicy Bypass -File install-autostart.ps1
 powershell -ExecutionPolicy Bypass -File install-autostart.ps1 -Uninstall
 ```
 
+## Uninstall
+
+Double-click **UNINSTALL.bat** in the Crew folder (also attached to every GitHub release with `uninstall.ps1`). It stops Crew, removes the scheduled tasks, shortcuts, Claude Code conversations for the Crew agents and the Crew folder itself. It lists everything first and asks you to type REMOVE. Add `-DryRun` to only look, or `-KeepData` to keep your config, history, workspace and logins. Node.js, Git and Claude Code are left alone.
+
 If agents reply with a login error, open a terminal and run `claude auth login` once.
 
 ## Talking to agents
@@ -74,7 +78,7 @@ Restart Crew after editing the config.
 
 ## Internet access (Cloudflare)
 
-`cloudflare` in the config opens a second entrance on `port` (default 7778), reachable only from this PC, for a Cloudflare Tunnel to connect to. Cloudflare Access shows the login page and MFA prompt. Crew then checks Cloudflare's signed login token on every request itself, including the signature, the `aud` tag, the team, the expiry, and that the email is in `allowedEmails`, so a mistake in the Cloudflare settings alone can't let anyone in.
+Easiest: **Settings > Set up internet access** in Crew guides you through it. `cloudflare` in the config opens a second entrance on `port` (default 7778), reachable only from this PC, for a Cloudflare Tunnel to connect to. Cloudflare Access shows the login page and MFA prompt. Crew then checks Cloudflare's signed login token on every request itself, including the signature, the `aud` tag, the team, the expiry, and that the email is in `allowedEmails`, so a mistake in the Cloudflare settings alone can't let anyone in.
 
 - `hostname`: the public address, e.g. `crew.example.com`.
 - `teamDomain`: your Zero Trust team domain, e.g. `myteam.cloudflareaccess.com`.

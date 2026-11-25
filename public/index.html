@@ -434,6 +434,11 @@
   .thumbs img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
   .file { font-size: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px; background: var(--panel); color: inherit; text-decoration: none; }
   .stats { font-size: 11px; color: var(--muted); }
+  #picView { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.92); touch-action: none; overscroll-behavior: contain; display: flex; align-items: center; justify-content: center; overflow: hidden; user-select: none; -webkit-user-select: none; }
+  #picView[hidden] { display: none; }
+  #picView img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center; cursor: zoom-in; will-change: transform; -webkit-user-drag: none; }
+  #picView.zoomed img { cursor: grab; }
+  #picClose { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: rgba(30,30,30,.85); color: #fff; font-size: 24px; line-height: 1; display: flex; align-items: center; justify-content: center; z-index: 2; cursor: pointer; }
 
   footer { border-top: 1px solid var(--border); background: var(--panel); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
   #held {
@@ -588,8 +593,16 @@
   #selBar .grow { flex: 1; font-weight: 600; }
   #tray { display: none; gap: 6px; padding: 6px 12px; flex-direction: column; border-bottom: 1px solid var(--err); background: color-mix(in srgb, var(--err) 10%, var(--panel)); }
   #tray.on { display: flex; }
-  #tray { max-height: 40vh; overflow-y: auto; }
-  #tray .th { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; opacity: .8; }
+  #tray { padding-top: 4px; padding-bottom: 4px; }
+  #tray .tbody { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
+  #tray .tbar { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 4px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+  #tray .tbar .tn { font-weight: 700; white-space: nowrap; }
+  #tray .tbar .tl { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
+  #tray .tbar:focus-visible { outline: 3px solid var(--accent, #6aa0ff); outline-offset: 2px; }
+  #tray .ansrow { flex-wrap: nowrap; }
+  #tray .ansrow input { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 8px 12px; font-size: 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg, var(--panel)); color: var(--text); }
+  #tray .ansrow button { flex: 0 0 auto; }
+  details.denynote > summary { cursor: pointer; font-weight: 600; font-size: 13px; opacity: .85; }
   #tray .tr { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel); color: var(--text); }
   #tray .tr.perm { border-left: 4px solid #e0a020; }
   #tray .tr.ask { border-left: 4px solid var(--accent, #6aa0ff); }
@@ -781,6 +794,10 @@
 <dialog id="setDlg">
   <div class="dlg-head"><h3>Crew settings</h3><button class="x" data-close>×</button></div>
   <div class="dlg-body" id="setBody"></div>
+</dialog>
+<dialog id="cfDlg">
+  <div class="dlg-head"><h3>Internet access</h3><button class="x" data-close>×</button></div>
+  <div class="dlg-body" id="cfBody"></div>
 </dialog>
 <dialog id="statDlg">
   <div class="dlg-head"><h3>Blocked &amp; status</h3><button class="x" data-close>×</button></div>
@@ -1386,12 +1403,13 @@
     if (m.attachments?.length) {
       const imgs = m.attachments.filter((a) => a.type?.startsWith('image/'));
       const files = m.attachments.filter((a) => !a.type?.startsWith('image/'));
-      if (imgs.length) html += `<div class="thumbs">${imgs.map((a) => `<a href="/api/uploads/${esc(a.id)}" target="_blank"><img src="/api/uploads/${esc(a.id)}" alt="${esc(a.name)}" loading="lazy"></a>`).join('')}</div>`;
-      if (files.length) html += `<div class="thumbs">${files.map((a) => `<a class="file" href="/api/uploads/${esc(a.id)}">${ic('file')} ${esc(a.name)}</a>`).join('')}</div>`;
+      if (imgs.length) html += `<div class="thumbs">${imgs.map((a) => `<a class="pic" href="/api/uploads/${esc(a.id)}"><img src="/api/uploads/${esc(a.id)}" alt="${esc(a.name)}" loading="lazy"></a>`).join('')}</div>`;
+      if (files.length) html += `<div class="thumbs">${files.map((a) => `<a class="file" download="${esc(a.name)}" href="/api/uploads/${esc(a.id)}">${ic('file')} ${esc(a.name)}</a>`).join('')}</div>`;
     }
     if (m.denials?.length) {
-      html += `<div class="card alert"><h4>${f.approved ? ic('check') + ' Approved' : f.denied ? ic('blocked') + ' Denied' : 'Permission needed'}</h4><ul>${m.denials.map((d) => `<li><span class="p" title="${esc(d.rule)}">${esc(d.label)}</span>${d.reason ? `<div class="small">Why it asks: ${esc(d.reason)}</div>` : ''}</li>`).join('')}</ul>
-        ${f.approved || f.denied ? '' : `<div class="row" style="margin-top:6px"><button class="btn primary" data-approve>Approve once and continue</button><span class="small">Only these exact actions, for its next run.</span></div>`}</div>`;
+      const dl = f.approved ? ic('check') + ' Approved' : f.denied ? ic('blocked') + ' Denied' : 'A command was refused';
+      html += `<details class="card denynote"><summary>${dl} · ${esc(m.denials[0].label)}${m.denials.length > 1 ? ` +${m.denials.length - 1}` : ''}</summary><ul>${m.denials.map((d) => `<li><span class="p" title="${esc(d.rule)}">${esc(d.label)}</span>${d.reason ? `<div class="small">Why it asks: ${esc(d.reason)}</div>` : ''}</li>`).join('')}</ul>
+        ${f.approved || f.denied ? '' : `<div class="row" style="margin-top:6px"><button class="btn primary" data-approve>Approve once and continue</button><span class="small">Only these exact actions, for its next run. The agent carries on another way without it.</span></div>`}</details>`;
     }
     if (m.changes?.files?.length) {
       const c = m.changes;
@@ -1847,6 +1865,8 @@
       ${field('Hand-off depth', 'How many times helpers may pass work to each other from one message (0 to 20).', `<input id="stHops" ${inp} type="number" min="0" max="20" value="${esc(v.maxHops)}">`)}
       ${field('When agents change things', 'How often an agent must ask before acting.', `<select id="stPerm" ${inp}>${modes.map((m) => `<option value="${m[0]}" ${m[0] === v.permissionMode ? 'selected' : ''}>${m[1]}</option>`).join('')}</select>`)}
       ${field('Model override', 'Leave empty to use each agent’s own choice.', `<input id="stModel" ${inp} value="${esc(v.model)}" placeholder="(default)" autocapitalize="none">`)}
+      <h4>Reach Crew from anywhere</h4>
+      ${field('Internet access (Cloudflare)', 'Open Crew from your phone away from home, with a sign-in. A guided setup walks you through it.', `<button class="btn" id="stCf" ${dis}>Set up internet access…</button>`)}
       <h4>This PC${d.canEditAdvanced ? '' : ' <span class="small">(open Crew on the PC to change these)</span>'}</h4>
       ${field('Port', 'The number in the web address. Default 7777.', `<input id="stPort" ${inp} ${dis} type="number" min="1024" max="65535" value="${esc(v.port)}">`)}
       ${field('Phone access on your home network', 'Lets phones and other PCs on your Wi-Fi open Crew.', `<label><input id="stLan" type="checkbox" ${dis} ${v.allowLan ? 'checked' : ''}> Allow other devices on this network</label>`)}
@@ -1862,8 +1882,59 @@
       $('#stRestart').hidden = false;
     };
     $('#stRestart').onclick = () => { $('#restartBtn').click(); };
+    $('#stCf').onclick = () => { renderCloudflare(); open('#cfDlg'); };
   }
   $('#setBtn').onclick = () => { renderSettings(); open('#setDlg'); };
+
+  // ---------- internet access (Cloudflare) guided setup ----------
+  async function renderCloudflare(msg) {
+    const box = $('#cfBody');
+    const r = await fetch('/api/cloudflare');
+    if (!r.ok) { box.innerHTML = '<div class="small">Internet access can only be set up from Crew open on the PC it runs on.</div>'; return; }
+    const d = await r.json(), v = d.values;
+    const inp = 'style="width:100%;box-sizing:border-box;margin:3px 0"';
+    const ext = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
+    const step = (n, title, html, open) => `<details class="job" ${open ? 'open' : ''}><summary><b>Step ${n}. ${title}</b></summary><div class="small" style="margin-top:6px;line-height:1.5">${html}</div></details>`;
+    const tick = (ok, t) => `<div class="small">${ok ? '✅' : '⬜'} ${t}</div>`;
+    box.innerHTML = `
+      <div class="small">Lets you open Crew from your phone anywhere, safely: Cloudflare asks for a sign-in first, and Crew checks that sign-in again itself. Nothing is opened on your router. It is free for a few people. You need a Cloudflare account and a web address (domain) on it.</div>
+      <div class="job"><h5>Where it stands</h5>
+        ${tick(d.cloudflaredInstalled, 'Tunnel program (cloudflared) ' + (d.cloudflaredInstalled ? 'installed, ' + esc(d.tunnelService) : 'not installed yet'))}
+        ${tick(d.runningNow, d.runningNow ? 'Crew is accepting internet visitors now' : 'Crew is not accepting internet visitors yet (turn it on below, save, restart)')}
+      </div>
+      ${step(1, 'Make a Cloudflare account and add a domain', `Go to ${ext('https://dash.cloudflare.com/sign-up', 'cloudflare.com')} and sign up (free). You need a <b>domain</b>, a web address you own such as <code>yourdomain.com</code> (about $10 a year from any registrar, or buy one inside Cloudflare under <b>Domain Registration</b>). Click <b>Add a domain</b>, choose the free plan, and follow the prompts (if the domain is from another registrar, Cloudflare shows two name servers to paste into that registrar). Wait until the domain says <b>Active</b>. This can take from a few minutes to a few hours.`, !v.hostname)}
+      ${step(2, 'Create the tunnel', `The tunnel is the small program that connects this PC to Cloudflare. Open ${ext('https://one.dash.cloudflare.com/', 'Zero Trust')}. The first time it asks for a <b>team name</b> (anything, for example your surname) and the <b>Free</b> plan (it may ask for a card but charges nothing). Write the team name down: step 4 needs it.<br>1. Go to <b>Networks &gt; Tunnels &gt; Create a tunnel</b> (older menus: Access &gt; Tunnels).<br>2. Choose <b>Cloudflared</b>, then Next. Name it <code>Crew</code> and save.<br>3. Under <b>Choose your environment</b> pick <b>Windows</b>. It shows a command beginning <code>cloudflared.exe service install</code>. Copy the whole command.<br>4. On this PC press the Windows key, type <b>PowerShell</b>, right-click <b>Windows PowerShell</b> and choose <b>Run as administrator</b>. Paste the command and press Enter. That installs the tunnel and keeps it running after restarts.<br>5. Back in the browser, wait for the connector to show <b>Connected</b> (and the tunnel <b>Healthy</b>), then press <b>Next</b>.<br>6. On <b>Add a public hostname</b>: Subdomain <code>crew</code>, Domain = your domain, Path empty, Service type <b>HTTP</b>, URL <code>localhost:${esc(v.port)}</code>. Save the tunnel. Your Crew address is then <code>crew.yourdomain.com</code>.<br><b>Never</b> use port ${esc(d.mainPort)} here, only ${esc(v.port)}: that other port has no sign-in check.`, false)}
+      ${step(3, 'Protect it with a sign-in', `Without this step anyone who finds the address could reach Crew, so do not skip it. In Zero Trust go to <b>Access &gt; Applications &gt; Add an application &gt; Self-hosted</b> (older menus: Access &gt; Applications).<br>1. Application name: <code>Crew</code>. Add a public hostname with the same subdomain and domain as step 2 (for example <code>crew</code> and <code>yourdomain.com</code>).<br>2. Add a policy: name <code>Me</code>, action <b>Allow</b>, and under Include choose selector <b>Emails</b> and type your own email address (add each person you want to let in). Under Login methods keep <b>One-time PIN</b> on; that is how Cloudflare emails you a code.<br>3. Save the application, then open it again (Access &gt; Applications &gt; Crew &gt; Edit) and copy its <b>Application Audience (AUD) Tag</b>, a long string of letters and numbers, from the Overview or Basic information section.`, false)}
+      ${step(4, 'Tell Crew', 'Fill in the boxes below with what you just made, press <b>Check</b>, and when it looks right press <b>Save</b>, then restart Crew.', true)}
+      <div class="job"><h5>Public address</h5><input id="cfHost" ${inp} value="${esc(v.hostname)}" placeholder="crew.yourdomain.com" autocapitalize="none"><div class="small">The address you gave the tunnel in step 2.</div></div>
+      <div class="job"><h5>Team name</h5><input id="cfTeam" ${inp} value="${esc(v.teamDomain)}" placeholder="myteam.cloudflareaccess.com" autocapitalize="none"><div class="small">The team name you picked in step 2. If you forgot it, open Zero Trust &gt; Settings &gt; Custom Pages: it shows <b>yourteam.cloudflareaccess.com</b>. Just the first word is fine.</div></div>
+      <div class="job"><h5>Application Audience (AUD) tag</h5><input id="cfAud" ${inp} value="${esc(v.aud)}" placeholder="long string of letters and numbers" autocapitalize="none" spellcheck="false"><div class="small">The long tag you copied at the end of step 3. Crew uses it to make sure a sign-in was meant for this app.</div></div>
+      <div class="job"><h5>Emails allowed in</h5><textarea id="cfMail" rows="2" ${inp} placeholder="you@example.com" autocapitalize="none">${esc(v.allowedEmails)}</textarea><div class="small">One per line. Keep this the same as the rule in step 3.</div></div>
+      <div class="job"><h5>Tunnel port</h5><input id="cfPort" ${inp} type="number" value="${esc(v.port)}"><div class="small">Leave at 7778 unless something else uses it. Must not be ${esc(d.mainPort)}.</div></div>
+      <div class="job"><label><input id="cfOn" type="checkbox" ${v.enabled ? 'checked' : ''}> Turn internet access on</label></div>
+      <div class="row"><button class="btn" id="cfCheck">Check</button><button class="btn primary" id="cfSave">Save</button><button class="btn" id="cfRestart" hidden>Restart Crew now</button></div>
+      <div class="small" id="cfMsg" style="margin-top:8px">${esc(msg || '')}</div>
+      <div id="cfOut"></div>
+      <div class="small" style="margin-top:10px">If Check shows a red cross, read that line: it says what to fix (usually the address, the tag or the tunnel not running). Phone: once it is working, open <b>https://your address</b> on your phone, sign in with the email code Cloudflare sends, and add it to your home screen. To switch it off, untick the box and save.</div>`;
+    const read = () => ({ enabled: $('#cfOn').checked, hostname: $('#cfHost').value, teamDomain: $('#cfTeam').value, aud: $('#cfAud').value, allowedEmails: $('#cfMail').value, port: $('#cfPort').value });
+    const post = (p) => fetch(p, { method: 'POST', headers: { 'content-type': 'application/json', 'x-crew': '1' }, body: JSON.stringify(read()) });
+    $('#cfCheck').onclick = async () => {
+      $('#cfMsg').textContent = 'Checking…'; $('#cfOut').innerHTML = '';
+      const x = await post('/api/cloudflare/check').catch(() => null);
+      if (!x || !x.ok) { $('#cfMsg').textContent = 'Could not run the check.'; return; }
+      const j = await x.json();
+      $('#cfMsg').textContent = j.checks.every((c) => c.ok) ? 'All good.' : 'Something still needs attention:';
+      $('#cfOut').innerHTML = j.checks.map((c) => (c.ok ? '✅ ' : '❌ ').replace(/^/, '<div class="small">') + esc(c.text) + '</div>').join('');
+    };
+    $('#cfSave').onclick = async () => {
+      const x = await post('/api/cloudflare').catch(() => null);
+      const j = x ? await x.json().catch(() => ({})) : {};
+      if (!x || !x.ok) { $('#cfMsg').textContent = (j && j.error) || 'Could not save.'; return; }
+      $('#cfMsg').textContent = 'Saved. Restart Crew to use it.';
+      $('#cfRestart').hidden = false;
+    };
+    $('#cfRestart').onclick = () => { $('#restartBtn').click(); };
+  }
 
   // ---------- create / edit agent profiles + right-click menu ----------
   function renderProfileForm(id) {
@@ -2451,39 +2522,53 @@
     const t = $('#tray');
     // Two kinds only. Permission cards: a tool call the agent was refused (Allow once / Deny).
     // Question cards: an agent's ask block, answered with its own options. Nothing else lands here.
+    // Ask blocks only (refused commands live as a quiet note in the chat). Slim one-line bar by default;
+    // the open/closed state is remembered and it never opens by itself. Only rebuilt when the list changes.
     const open = (asks || []).filter((k) => agents[k.agent]);
-    const perms = Object.values(agents).filter((a) => a.needsYou?.perm);
-    const n = open.length + perms.length;
+    const n = open.length;
+    const isOpen = store.get('crew-tray') === 'open';
+    const sig = open.map((k) => k.id + '|' + k.q + '|' + k.options.join('\u0001')).join('\u0002') + '#' + (isOpen ? 1 : 0);
+    if (t.dataset.sig === sig) return;
+    t.dataset.sig = sig;
+    // keep what is being typed (text, focus, caret) and the scroll spot across the rebuild
+    const typed = {};
+    t.querySelectorAll('input[data-ans]').forEach((i) => { typed[i.dataset.ans] = i.value; });
+    const act = document.activeElement;
+    const focusId = act && t.contains(act) && act.dataset?.ans ? act.dataset.ans : null;
+    const caret = focusId ? [act.selectionStart, act.selectionEnd] : null;
+    const prevScroll = t.querySelector('.tbody')?.scrollTop || 0;
     t.classList.toggle('on', n > 0);
+    t.classList.toggle('openp', isOpen);
     t.innerHTML = '';
     if (!n) return;
-    const h = document.createElement('div'); h.className = 'th'; h.textContent = `Waiting on you (${n})`; t.appendChild(h);
-    const lock = (r, on) => r.querySelectorAll('button').forEach((b) => { b.disabled = on; });
+    const latest = open[open.length - 1];
+    const bar = document.createElement('button'); bar.className = 'tbar'; bar.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    bar.innerHTML = `<span class="tn">Waiting on you: ${n}</span><span class="tl">${esc(nameOf(latest.agent))}: ${esc(latest.q)}</span><span class="tc">${isOpen ? '▴' : '▾'}</span>`;
+    bar.onclick = () => { store.set('crew-tray', isOpen ? 'closed' : 'open'); renderTray(); };
+    t.appendChild(bar);
+    if (!isOpen) return;
+    const body = document.createElement('div'); body.className = 'tbody'; t.appendChild(body);
+    const lock = (r, on) => r.querySelectorAll('button,input').forEach((b) => { b.disabled = on; });
     const jump = (id, msgId) => { selectAgent(id); setTimeout(() => jumpTo(msgId), 50); };
-    perms.forEach((a) => {
-      const r = document.createElement('div'); r.className = 'tr perm'; r.setAttribute('role', 'group');
-      const what = a.needsYou.text.replace(/^Needs your OK to /, '');
-      r.innerHTML = `<div class="tk">${ic('lock')} Permission · ${esc(a.name)}</div><div class="tq" title="${esc(what)}">Allow ${esc(a.name)} to ${esc(what)}?</div>
-        <div class="tb"><button class="allow" data-a>Allow once</button><button class="allow" data-aa>Always allow</button><button class="deny" data-d>Deny</button><button class="ghost" data-j>Open</button></div>`;
-      const msgId = a.needsYou.msgId;
-      r.querySelector('[data-a]').onclick = async () => { lock(r, true); const res = await api('/api/approve', { id: msgId }); if (!res.ok) lock(r, false); };
-      r.querySelector('[data-aa]').onclick = async () => { lock(r, true); const res = await api('/api/approve', { id: msgId, always: true }); if (!res.ok) lock(r, false); };
-      r.querySelector('[data-d]').onclick = async () => { lock(r, true); const res = await api('/api/deny', { id: msgId }); if (!res.ok) lock(r, false); };
-      r.querySelector('[data-j]').onclick = () => jump(a.id, msgId);
-      t.appendChild(r);
-    });
     open.forEach((k) => {
       const r = document.createElement('div'); r.className = 'tr ask'; r.setAttribute('role', 'group');
       r.innerHTML = `<div class="tk">${ic('chat')} Question · ${esc(nameOf(k.agent))}</div><div class="tq" title="${esc(k.q)}">${esc(k.q)}</div>
         <div class="tb">${k.options.map((o, i) => `<button class="opt" data-o="${i}">${esc(o)}</button>`).join('')}</div>
-        <div class="tb sub"><button class="ghost" data-other>Type an answer</button><button class="ghost" data-j>Open</button><button class="ghost" data-x>Not now</button></div>`;
+        <div class="tb ansrow"><input type="text" data-ans="${esc(k.id)}" placeholder="Type an answer" enterkeyhint="send" autocomplete="off"><button class="opt" data-send>Send</button></div>
+        <div class="tb sub"><button class="ghost" data-j>Open</button><button class="ghost" data-x>Not now</button></div>`;
+      const inp = r.querySelector('input');
+      if (typed[k.id]) inp.value = typed[k.id];
       const answer = async (choice) => { lock(r, true); const res = await api('/api/ask/answer', { id: k.id, choice }); if (!res.ok) lock(r, false); };
+      const sendTyped = () => { const v = inp.value.trim(); if (v) answer(v); };
       r.querySelectorAll('[data-o]').forEach((b) => { b.onclick = () => answer(k.options[+b.dataset.o]); });
-      r.querySelector('[data-other]').onclick = () => { const v = prompt(k.q); if (v && v.trim()) answer(v.trim()); };
+      r.querySelector('[data-send]').onclick = sendTyped;
+      inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); sendTyped(); } };
       r.querySelector('[data-j]').onclick = () => jump(k.agent, k.msgId);
       r.querySelector('[data-x]').onclick = () => api('/api/ask/dismiss', { id: k.id });
-      t.appendChild(r);
+      body.appendChild(r);
     });
+    body.scrollTop = prevScroll;
+    if (focusId) { const i = t.querySelector(`input[data-ans="${CSS.escape(focusId)}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret[0], caret[1]); } catch {} } }
   }
   window.renderTray = renderTray;
   const paintCtl = (on) => { const b = $('#ctlBtn'); b.innerHTML = ic('mouse') + (on ? ' Control: ON' : ' Control: OFF'); b.style.background = on ? '#c60' : ''; b.style.color = on ? '#fff' : ''; b.dataset.on = on ? '1' : ''; };
@@ -2635,6 +2720,86 @@
   const tb = $('#tourBtn');
   if (tb) tb.onclick = () => { document.body.classList.remove('hmenu'); setTimeout(start, 50); };
   if (!store.get('crew-tour') && !document.body.classList.contains('popout')) setTimeout(() => { if (!store.get('crew-tour')) start(); }, 900);
+})();
+
+// ---------- in-app picture viewer ----------
+// Pictures open on top of Crew (never a new page), so there is always a way back to the same spot.
+(() => {
+  const v = document.createElement('div');
+  v.id = 'picView'; v.hidden = true;
+  v.innerHTML = '<button id="picClose" type="button" aria-label="Close picture">&times;</button><img alt="" draggable="false">';
+  document.body.appendChild(v);
+  const img = v.querySelector('img'), xb = v.querySelector('#picClose');
+  let open = false, pushed = false, sc = 1, tx = 0, ty = 0;
+  const pts = new Map();
+  let pinch = null, drag = null, moved = 0, downOnImg = false;
+  const apply = () => { img.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`; v.classList.toggle('zoomed', sc > 1); };
+  const reset = () => { sc = 1; tx = ty = 0; apply(); };
+  const clampPan = () => {
+    const r = img.getBoundingClientRect(), w = v.clientWidth, h = v.clientHeight;
+    const bw = r.width / sc, bh = r.height / sc; // base size at scale 1
+    const mx = Math.max(0, (bw * sc - w) / 2), my = Math.max(0, (bh * sc - h) / 2);
+    tx = Math.min(mx, Math.max(-mx, tx)); ty = Math.min(my, Math.max(-my, ty));
+  };
+  const setScale = (s) => { sc = Math.min(6, Math.max(1, s)); if (sc === 1) { tx = ty = 0; } else clampPan(); apply(); };
+  function hide() {
+    if (!open) return;
+    open = false; v.hidden = true; img.removeAttribute('src'); pts.clear(); pinch = drag = null; reset();
+  }
+  function show(src, alt) {
+    reset(); img.alt = alt || ''; img.src = src; v.hidden = false; open = true;
+    history.pushState({ crewPic: 1 }, ''); pushed = true; xb.focus({ preventScroll: true });
+  }
+  function closeUI() { if (!open) return; if (pushed) { pushed = false; history.back(); } else hide(); }
+  addEventListener('popstate', () => { pushed = false; hide(); });
+  document.addEventListener('keydown', (e) => {
+    if (open && e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); closeUI(); }
+  }, true);
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a.pic');
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
+    e.preventDefault();
+    show(a.getAttribute('href'), a.querySelector('img')?.alt);
+  });
+  xb.addEventListener('click', (e) => { e.stopPropagation(); closeUI(); });
+  xb.addEventListener('pointerdown', (e) => e.stopPropagation());
+  v.addEventListener('wheel', (e) => { e.preventDefault(); setScale(sc * (e.deltaY < 0 ? 1.2 : 1 / 1.2)); }, { passive: false });
+  v.addEventListener('pointerdown', (e) => {
+    if (e.target === xb) return;
+    v.setPointerCapture?.(e.pointerId);
+    if (!pts.size) downOnImg = e.target === img;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    moved = 0;
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, s: sc }; drag = null; }
+    else if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, tx, ty };
+  });
+  v.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && pts.size >= 2) {
+      const [a, b] = [...pts.values()];
+      moved = 99; setScale(pinch.s * (Math.hypot(a.x - b.x, a.y - b.y) / pinch.d));
+    } else if (drag && pts.size === 1) {
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      moved = Math.max(moved, Math.hypot(dx, dy));
+      if (sc > 1) { tx = drag.tx + dx; ty = drag.ty + dy; clampPan(); apply(); }
+    }
+  });
+  const up = (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId);
+    if (pts.size < 2) pinch = null;
+    if (pts.size === 1) { const [p] = [...pts.values()]; drag = { x: p.x, y: p.y, tx, ty }; moved = 99; return; }
+    if (pts.size === 0) {
+      drag = null;
+      if (e.type === 'pointerup' && moved < 8) {
+        if (downOnImg) setScale(sc > 1 ? 1 : 2.5); // tap picture: zoom in/out
+        else closeUI(); // tap outside the picture: close
+      }
+    }
+  };
+  v.addEventListener('pointerup', up); v.addEventListener('pointercancel', up);
+  v.addEventListener('contextmenu', (e) => e.preventDefault());
 })();
 </script>
 </body>

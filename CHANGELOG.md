@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.41.2
+- Uninstaller (UNINSTALL.bat + uninstall.ps1)
+- Guided Internet access (Cloudflare) settings page with step-by-step help
+- publish needs --go
 ## 0.36.3
 - Public export shows only example agents: real agent behaviour moved to private local settings; publish check covers names and file names
 - Crew rule: judge work against the end goal, not just the brief
