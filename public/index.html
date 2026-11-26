@@ -383,6 +383,8 @@
   .tdots i:nth-child(2) { animation-delay: .15s; }
   .tdots i:nth-child(3) { animation-delay: .3s; }
   .tdots i:nth-child(4) { animation-delay: .45s; }
+  .msg.draft .dstop { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 3px 10px; font-size: 12px; border-radius: 12px; border: 1px solid #e05555; color: #e05555; background: transparent; cursor: pointer; }
+  .msg.draft .dstop svg { width: 12px; height: 12px; }
   .msg.draft .meta .tdots { height: 10px; gap: 3px; margin-right: -4px; }
   .msg.draft .meta .tdots i { width: 5px; height: 5px; }
   @keyframes tdot { 0%, 60%, 100% { transform: translateY(0); opacity: .35; } 30% { transform: translateY(-4px); opacity: 1; } }
@@ -411,6 +413,7 @@
   .reacts .radd { opacity: 0; transition: opacity .15s; }
   .msg:hover .radd, .msg .radd.open, .reacts.has .radd { opacity: .7; }
   @media (hover: none) { .reacts .radd { opacity: .45; } }
+  .reacts .rstop { opacity: .8; color: #e05555; border-color: #e05555; }
   .rpick { position: fixed; z-index: 50; display: flex; gap: 2px; padding: 4px 6px; border-radius: 16px; background: var(--panel); border: 1px solid var(--border, #444); box-shadow: 0 4px 14px rgba(0,0,0,.4); }
   .rpick button { border: 0; background: transparent; font-size: 20px; padding: 2px 4px; cursor: pointer; border-radius: 8px; }
   .rpick button:hover { background: color-mix(in srgb, var(--text) 15%, transparent); }
@@ -1292,6 +1295,7 @@
     el.querySelector('.mdl').textContent = mdl;
     el.querySelector('.mdl').style.display = mdl ? '' : 'none';
     el.querySelector('[data-act=stop]').style.display = a.status === 'idle' ? 'none' : '';
+    document.querySelectorAll('.rstop').forEach((b) => { if (b.dataset.ag === a.id) b.style.display = a.status === 'idle' ? 'none' : ''; });
     const act = a.missing ? 'Folder not found'
       : a.needsYou ? 'Needs you: ' + a.needsYou.text
       : a.status === 'working' && a.paused ? 'Paused: ' + (a.activity || 'working')
@@ -1461,9 +1465,9 @@
     $('#pinBody').querySelectorAll('[data-unpin]').forEach((b) => b.onclick = () => api('/api/pin', { id: b.closest('.job').dataset.id }));
   }
   $('#pinBtn').onclick = () => { open('#pinDlg'); paintPins(); };
-  function reactBar(id, mine) {
+  function reactBar(id, mine, agent) {
     const box = document.createElement('div');
-    box.className = 'reacts'; box.dataset.rid = id; if (mine) box.dataset.mine = '1';
+    box.className = 'reacts'; box.dataset.rid = id; if (mine) box.dataset.mine = '1'; if (agent) box.dataset.ag = agent;
     paintReacts(box);
     return box;
   }
@@ -1478,6 +1482,13 @@
       ub.className = 'radd'; ub.title = 'Unsend'; ub.innerHTML = ic('trash');
       ub.onclick = () => { if (confirm('Unsend this message? Agents that have not started on it will never see it.')) api('/api/unsend', { id }); };
       box.appendChild(ub);
+    }
+    if (box.dataset.ag) {
+      const sb = document.createElement('button');
+      sb.className = 'radd rstop'; sb.dataset.ag = box.dataset.ag; sb.title = 'Stop ' + nameOf(box.dataset.ag); sb.innerHTML = ic('stop');
+      sb.style.display = agents[box.dataset.ag] && agents[box.dataset.ag].status !== 'idle' ? '' : 'none';
+      sb.onclick = () => api(`/api/agents/${box.dataset.ag}/stop`);
+      box.appendChild(sb);
     }
     box.querySelectorAll('.rchip').forEach((b) => b.onclick = () => api('/api/react', { id, emoji: b.dataset.e }));
     box.querySelector('.radd').onclick = (ev) => {
@@ -1524,7 +1535,7 @@
       el.innerHTML = `${you ? '' : `<div class="av">${avatar(m.from)}</div>`}
         <div class="body"><div class="meta">${you ? '' : `<b>${esc(nameOf(m.from))}</b>`}<span>${time(m.ts)}</span>${to}${needs}</div>
         <div class="bubble">${m.kind === 'error' ? esc(m.text) : md(m.text)}</div><div class="extras"></div></div>`;
-      el.querySelector('.body').appendChild(reactBar(m.id, you));
+      el.querySelector('.body').appendChild(reactBar(m.id, you, !you && agents[m.from] ? m.from : ''));
       renderExtras(m, el.querySelector('.extras'));
       // One-tap PROCEED on the newest agent reply: tells that agent to go ahead without waiting or asking.
       document.querySelectorAll('.proceedBtn').forEach((b) => b.remove());
@@ -1564,7 +1575,8 @@
       el = document.createElement('div');
       el.className = 'msg draft';
       el.dataset.from = agent; paintMsg(el, agent);
-      el.innerHTML = `<div class="av">${avatar(agent)}</div><div class="body"><div class="meta"><b>${esc(nameOf(agent))}</b>${TDOTS}<span class="dact"></span></div><div class="bubble"></div></div>`;
+      el.innerHTML = `<div class="av">${avatar(agent)}</div><div class="body"><div class="meta"><b>${esc(nameOf(agent))}</b>${TDOTS}<span class="dact"></span><button class="dstop" title="Stop ${esc(nameOf(agent))}">${ic('stop')} Stop</button></div><div class="bubble"></div></div>`;
+      el.querySelector('.dstop').onclick = () => api(`/api/agents/${agent}/stop`);
       $('#log').appendChild(el);
       drafts.set(agent, el);
     }

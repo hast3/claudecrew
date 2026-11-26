@@ -1,6 +1,6 @@
 {
   "name": "claude-crew",
-  "version": "0.41.2",
+  "version": "0.42.1",
   "private": true,
   "description": "A local chat room for a team of Claude Code agents that can hand work to each other.",
   "main": "server.js",

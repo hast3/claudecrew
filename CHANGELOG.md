@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.42.1
+- Stop button on every agent message and on the live working bubble
+- Stop button shows while an agent is busy
 ## 0.41.2
 - Uninstaller (UNINSTALL.bat + uninstall.ps1)
 - Guided Internet access (Cloudflare) settings page with step-by-step help
